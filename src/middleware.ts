@@ -3,7 +3,7 @@ import { NextRequest, NextResponse } from "next/server"
 import { decodeJwtPayload, COOKIE_NAME } from "@/lib/auth-utils"
 
 const PUBLIC_FILE = /\.(.*)$/
-const BASELINE_PREFIXES = ["/main-dashboard", "/dashboard", "/hrm"]
+const BASELINE_PREFIXES = ["/main-dashboard"]
 
 // Edge Memory Cache
 let CACHED_PREFIXES: string[] = [...BASELINE_PREFIXES]
@@ -12,7 +12,7 @@ const CACHE_TTL = 300000 // 5 minutes
 
 async function getDynamicProtectedPrefixes() {
     const now = Date.now()
-    
+
     // Check if cache is fresh
     if (LAST_FETCH_TIME > 0 && (now - LAST_FETCH_TIME) < CACHE_TTL) {
         return CACHED_PREFIXES
@@ -28,7 +28,7 @@ async function getDynamicProtectedPrefixes() {
     try {
         const filter = encodeURIComponent(JSON.stringify({ status: { _eq: "active" } }))
         const url = `${directusBase.replace(/\/$/, "")}/items/subsystems?fields=base_path&filter=${filter}&limit=-1`
-        
+
         const res = await fetch(url, {
             headers: { "Authorization": `Bearer ${directusToken}` },
             cache: 'no-store'
@@ -43,19 +43,19 @@ async function getDynamicProtectedPrefixes() {
 
         // Merge baseline with dynamic paths and deduplicate
         const merged = Array.from(new Set([...BASELINE_PREFIXES, ...dynamicPaths]))
-        
+
         CACHED_PREFIXES = merged
         LAST_FETCH_TIME = now
-        
+
         return CACHED_PREFIXES
     } catch (error) {
         console.error("[Middleware] Registry Fetch Failed:", error)
-        
+
         // Fail-Fast: If we have no cache at all (beyond baseline), we redirect to error
         if (CACHED_PREFIXES.length <= BASELINE_PREFIXES.length) {
-            throw error 
+            throw error
         }
-        
+
         // Otherwise, use stale cache (Graceful Degradation)
         return CACHED_PREFIXES
     }
@@ -115,15 +115,15 @@ export async function middleware(req: NextRequest) {
         return NextResponse.redirect(url)
     }
     const payload = decodeJwtPayload(token);
-    
+
     // Map path to subsystem ID and specific module slug (e.g. /hrm -> hrm)
     const subsystemMatch = prefixes.find((p) => pathname.startsWith(p));
-    
+
     if (subsystemMatch) {
         const subsystemId = subsystemMatch.replace("/", "");
-        
+
         // Dashboard is always allowed if logged in
-        if (subsystemId === "dashboard" || subsystemId === "main-dashboard") {
+        if (subsystemId === "main-dashboard") {
             return NextResponse.next();
         }
 
@@ -142,7 +142,7 @@ export async function middleware(req: NextRequest) {
         let authorizedSubsystemPaths: string[] = [];
         let authorizedModulePaths: string[] = [];
         let allModulePaths: string[] = [];
-        
+
         const directusBase = process.env.NEXT_PUBLIC_API_BASE_URL;
         const directusToken = process.env.DIRECTUS_STATIC_TOKEN;
 
@@ -170,9 +170,9 @@ export async function middleware(req: NextRequest) {
 
                 if (subRes.ok && modRes.ok && allModsRes.ok && userRes.ok) {
                     const [subData, modData, allModsData, userData] = await Promise.all([
-                        subRes.json(), 
-                        modRes.json(), 
-                        allModsRes.json(),
+                        subRes.json(),
+                        modRes.json(),
+                        allModsData.json(),
                         userRes.json()
                     ]);
 
@@ -191,12 +191,12 @@ export async function middleware(req: NextRequest) {
                     throw new Error(service);
                 }
             } catch (err) {
-                 console.error("[Middleware] Critical Service Failure:", err);
-                 const service = err instanceof Error ? err.message : "Authorization System";
-                 const url = req.nextUrl.clone();
-                 url.pathname = "/error/service-down";
-                 url.searchParams.set("service", service);
-                 return NextResponse.redirect(url);
+                console.error("[Middleware] Critical Service Failure:", err);
+                const service = err instanceof Error ? err.message : "Authorization System";
+                const url = req.nextUrl.clone();
+                url.pathname = "/error/service-down";
+                url.searchParams.set("service", service);
+                return NextResponse.redirect(url);
             }
         }
 
