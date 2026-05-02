@@ -375,7 +375,7 @@ export function ActivityLogTable({
                             <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest whitespace-nowrap">Rows per page</span>
                             <Select
                                 value={String(pageSize)}
-                                onValueChange={(val) => {
+                                onValueChange={(val: string) => {
                                     const next = Number(val);
                                     setPageSize(next);
                                     table.setPageSize(next);
