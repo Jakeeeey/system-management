@@ -1,4 +1,4 @@
-import { cookies } from "next/headers";
+import { cookies, headers } from "next/headers";
 import { decodeJwtPayload, COOKIE_NAME } from "@/lib/auth-utils";
 import { NavItem } from "@/types/navigation";
 import { z } from "zod";
@@ -103,10 +103,16 @@ export async function getSidebarNavigation(subsystemSlug: string): Promise<NavIt
             
             const url = `${springBase.replace(/\/+$/, "")}/api/view-user-authorized-module/all?subsystem_slug=${subsystemSlug}`;
             
+            const headerList = await headers();
+            const userAgent = headerList.get("user-agent") || "unknown";
+            const xForwardedFor = headerList.get("x-forwarded-for") || "unknown";
+
             const res = await fetch(url, {
                 headers: {
                     "Authorization": `Bearer ${token}`,
-                    "Content-Type": "application/json"
+                    "Content-Type": "application/json",
+                    "User-Agent": userAgent,
+                    "X-Forwarded-For": xForwardedFor,
                 },
                 next: { revalidate: 0 } 
             });

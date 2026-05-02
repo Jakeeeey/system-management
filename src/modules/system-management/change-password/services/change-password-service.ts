@@ -1,9 +1,8 @@
 import { ChangePasswordRequest } from "../types/change-password.schema";
-import { cookies } from "next/headers";
+import { cookies, headers } from "next/headers";
 
 const SPRING_API_BASE_URL = process.env.SPRING_API_BASE_URL;
-const VOS_COOKIE_NAME = "vos_access_token";
-const SPRING_COOKIE_NAME = "springboot_token";
+import { COOKIE_NAME as VOS_COOKIE_NAME, SPRING_COOKIE_NAME } from "@/lib/auth-utils";
 
 /**
  * Utility to decode JWT without a library
@@ -31,10 +30,17 @@ export class ChangePasswordService {
      * Authenticate with Spring Boot to get a token
      */
     private static async login(email: string, password: string): Promise<string | null> {
+        const headerList = await headers();
+        const userAgent = headerList.get("user-agent") || "unknown";
+        const _xForwardedFor = headerList.get("x-forwarded-for") || "unknown";
+
         try {
             const response = await fetch(`${SPRING_API_BASE_URL}/auth/login`, {
                 method: "POST",
-                headers: { "Content-Type": "application/json" },
+                headers: {
+                    "Content-Type": "application/json",
+                    "User-Agent": userAgent,
+                },
                 body: JSON.stringify({
                     email: email,
                     hashPassword: password, // The backend expects 'hashPassword' for the login attempt
@@ -74,12 +80,16 @@ export class ChangePasswordService {
         // 2. Get Spring Boot token or login if needed
         let springToken = cookieStore.get(SPRING_COOKIE_NAME)?.value;
 
+        const headerList = await headers();
+        const userAgent = headerList.get("user-agent") || "unknown";
+
         const performRequest = async (token: string) => {
             return fetch(`${SPRING_API_BASE_URL}/users/${userId}`, {
                 method: "POST", // User specified POST operation
                 headers: {
                     "Content-Type": "application/json",
                     Authorization: `Bearer ${token}`,
+                    "User-Agent": userAgent,
                 },
                 body: JSON.stringify({
                     oldPassword: data.oldPassword,
