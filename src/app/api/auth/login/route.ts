@@ -1,12 +1,12 @@
 // src/app/api/auth/login/route.ts
 import { NextRequest, NextResponse } from "next/server";
-import { 
-    decodeJwtPayload, 
-    pickTokenFromPayload, 
-    COOKIE_NAME, 
-    COOKIE_MAX_AGE_CAP, 
-    extractClientIp, 
-    resolveIpGeo 
+import {
+    decodeJwtPayload,
+    pickTokenFromPayload,
+    COOKIE_NAME,
+    COOKIE_MAX_AGE_CAP,
+    extractClientIp,
+    resolveIpGeo
 } from "@/lib/auth-utils";
 
 export const runtime = "nodejs";
@@ -148,10 +148,10 @@ export async function POST(req: NextRequest) {
         const m = String((data as Record<string, unknown>)?.message ?? "").toLowerCase();
         const rawAttempts = (data as Record<string, unknown>)?.attempts ?? (data as Record<string, unknown>)?.failedAttempts;
         const backendAttempts = typeof rawAttempts === 'number' ? rawAttempts : null;
-        
+
         // 1. Check for Blocked status from backend (15+ attempts)
         if (m.includes("blocked") || m.includes("account_blocked") || (backendAttempts !== null && backendAttempts >= 15)) {
-             return NextResponse.json({
+            return NextResponse.json({
                 ok: false,
                 message: "ACCOUNT_BLOCKED"
             }, { status: 403 });
@@ -203,7 +203,7 @@ export async function POST(req: NextRequest) {
 
     const dataObj = (data && typeof data === "object" && "data" in (data as object)) ? (data as Record<string, unknown>).data : data;
     const token = pickTokenFromPayload(dataObj as string | Record<string, unknown> | null);
-    
+
     if (!token) {
         return NextResponse.json(
             { ok: false, message: "Login succeeded but no token was returned." },
@@ -225,7 +225,7 @@ export async function POST(req: NextRequest) {
     const decoded = decodeJwtPayload(token);
 
     const res = NextResponse.json(
-        { 
+        {
             ok: true,
             user: {
                 firstName: decoded?.FirstName || "",
@@ -242,7 +242,15 @@ export async function POST(req: NextRequest) {
         value: token,
         httpOnly: true,
         sameSite: "lax",
+<<<<<<< HEAD
         secure: process.env.NODE_ENV === "production",
+=======
+        // secure: process.env.NODE_ENV === "production",
+
+        // for development only to allow cookies to work on http
+        // secure: process.env.NODE_ENV === "production",
+        secure: false,
+>>>>>>> master
         path: "/",
         ...(remember ? { maxAge: cookieMaxAge } : {}),
     });
