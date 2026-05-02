@@ -10,6 +10,21 @@ const eslintConfig = defineConfig([
       "react-hooks/set-state-in-effect": "off",
     },
   },*/
+  {
+    rules: {
+      "@typescript-eslint/no-unused-vars": [
+        "warn",
+        {
+          "varsIgnorePattern": "^_",
+          "argsIgnorePattern": "^_",
+          "caughtErrorsIgnorePattern": "^_"
+        }
+      ],
+      // TanStack Table v8 returns functions from useReactTable() that the React Compiler
+      // cannot memoize. This is a known upstream incompatibility — not fixable in userland.
+      "react-hooks/incompatible-library": "off"
+    }
+  },
   globalIgnores([
     ".next/**",
     "out/**",

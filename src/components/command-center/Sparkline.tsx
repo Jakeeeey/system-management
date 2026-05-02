@@ -5,7 +5,7 @@ import { motion } from "framer-motion"
 
 interface SparklineProps {
     data: number[]
-    accent?: "cyan" | "indigo" | "rose" | "emerald"
+    accent?: "cyan" | "indigo" | "rose" | "emerald" | "amber" | "violet"
 }
 
 export function Sparkline({ data, accent = "cyan" }: SparklineProps) {
@@ -25,6 +25,8 @@ export function Sparkline({ data, accent = "cyan" }: SparklineProps) {
         indigo: "#6366f1",
         rose: "#f43f5e",
         emerald: "#10b981",
+        amber: "#f59e0b",
+        violet: "#8b5cf6",
     }[accent]
 
     return (
