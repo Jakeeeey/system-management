@@ -14,7 +14,7 @@ import {
  * Fetches logs from Spring Boot API
  */
 
-const SPRING_BASE = process.env.SPRING_API_BASE_URL || "http://100.81.225.79:8086";
+const SPRING_BASE = process.env.SPRING_API_BASE_URL;
 
 export class ActivityLogRepo {
     static async getActivities(token?: string): Promise<ActivityLogEntry[]> {
@@ -90,10 +90,10 @@ export class ActivityLogRepo {
 
     static calculateStats(activities: ActivityLogEntry[]): ActivityDashboardStats {
         const total = activities.length;
-        
+
         // Active users logic: track the latest state (LOGIN vs LOGOUT) for each user
         const userStates = new Map<number, 'LOGIN' | 'LOGOUT'>();
-        
+
         // Sort by timestamp ascending to process state changes in order
         [...activities]
             .sort((a, b) => new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime())
@@ -105,7 +105,7 @@ export class ActivityLogRepo {
             });
 
         const activeUsersCount = Array.from(userStates.values()).filter(state => state === 'LOGIN').length;
-        
+
         const securityEvents = activities.filter(a => a.status === 'FAILED' || a.status === 'BLOCKED').length;
         const blockedUsers = activities.filter(a => a.type === 'BLOCK').length;
 
@@ -145,7 +145,7 @@ export class ActivityLogRepo {
                     else if (a.type === 'CREATE_USER' || a.type === 'UPDATE_USER' || a.type === 'DELETE_USER') hourlyData[hour].management++;
                     else if (a.type === 'FORGOT_PASSWORD' || a.type === 'VERIFY_OTP' || a.type === 'PASSWORD_RESET') hourlyData[hour].recovery++;
                 }
-            } catch {}
+            } catch { }
 
         });
 
@@ -181,7 +181,7 @@ export class ActivityLogRepo {
             try {
                 const day = days[new Date(a.timestamp).getDay()];
                 dailyData[day]++;
-            } catch {}
+            } catch { }
 
         });
 
@@ -191,16 +191,16 @@ export class ActivityLogRepo {
     static calculateSecurityEvents(activities: ActivityLogEntry[]): SecurityEventData[] {
         // Simplified daily security events
         const securityByDay: Record<string, { failed: number, blocked: number, suspicious: number }> = {};
-        
+
         activities.forEach(a => {
             try {
                 const date = a.timestamp.split('T')[0];
                 if (!securityByDay[date]) securityByDay[date] = { failed: 0, blocked: 0, suspicious: 0 };
-                
+
                 if (a.status === 'FAILED') securityByDay[date].failed++;
                 else if (a.status === 'BLOCKED' || a.type === 'BLOCK') securityByDay[date].blocked++;
                 else if (a.status === 'WARNING') securityByDay[date].suspicious++;
-            } catch {}
+            } catch { }
 
         });
 
