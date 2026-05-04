@@ -32,13 +32,12 @@ interface LockoutInfo {
 }
 const lockoutMap = new Map<string, LockoutInfo>();
 
-const MAX_ATTEMPTS = 5;
 
-/** Returns lockout duration in ms based on failed attempt count */
 function getLockoutDuration(attempts: number): number {
     if (attempts >= 7) return 30 * 60 * 1000; // 30 minutes
-    if (attempts >= 6) return 10 * 60 * 1000; // 10 minutes
-    return 5 * 60 * 1000;                      //  5 minutes (5 attempts)
+    if (attempts === 6) return 10 * 60 * 1000; // 10 minutes
+    if (attempts === 5) return 5 * 60 * 1000;  // 5 minutes
+    return 0;
 }
 
 function normalizeLoginErrorMessage(status: number): string {
@@ -137,7 +136,7 @@ export async function POST(req: NextRequest) {
     }
 
     const raw = await springRes.text();
-    let data: unknown = null;
+    let data: Record<string, unknown> | string | null = null;
     try {
         data = raw ? JSON.parse(raw) : null;
     } catch {
@@ -145,9 +144,14 @@ export async function POST(req: NextRequest) {
     }
 
     if (!springRes.ok) {
-        const m = String((data as Record<string, unknown>)?.message ?? "").toLowerCase();
-        const rawAttempts = (data as Record<string, unknown>)?.attempts ?? (data as Record<string, unknown>)?.failedAttempts;
-        const backendAttempts = typeof rawAttempts === 'number' ? rawAttempts : null;
+        // Narrow data to an object so property accesses are type-safe.
+        // When JSON.parse fails, `data` is the raw string — treat it as an empty object.
+        const d = (data !== null && typeof data === "object") ? data : {} as Record<string, unknown>;
+
+        const m = String(d.message ?? "").toLowerCase();
+        const backendAttempts =
+            typeof d.attempts === "number" ? d.attempts :
+                typeof d.failedAttempts === "number" ? d.failedAttempts : null;
 
         // 1. Check for Blocked status from backend (15+ attempts)
         if (m.includes("blocked") || m.includes("account_blocked") || (backendAttempts !== null && backendAttempts >= 15)) {
@@ -158,13 +162,12 @@ export async function POST(req: NextRequest) {
         }
 
         // 2. Check for Locked status from backend (5-14 attempts)
-        if (m.includes("locked") || m.includes("account_locked") || (data as Record<string, unknown>)?.lockUntil || (backendAttempts !== null && backendAttempts >= 5)) {
+        if (m.includes("locked") || m.includes("account_locked") || d.lockUntil || (backendAttempts !== null && backendAttempts >= 5)) {
+            const duration = getLockoutDuration(backendAttempts ?? 5);
             return NextResponse.json({
                 ok: false,
                 message: "ACCOUNT_LOCKED",
-                lockedUntil: (data as Record<string, unknown>)?.lockUntil
-                    ? new Date(String((data as Record<string, unknown>).lockUntil)).getTime()
-                    : Date.now() + getLockoutDuration(backendAttempts ?? 5),
+                lockedUntil: d.lockUntil ? new Date(d.lockUntil as string).getTime() : Date.now() + duration,
                 attempts: backendAttempts
             }, { status: 423 }); // 423 Locked
         }
@@ -180,11 +183,11 @@ export async function POST(req: NextRequest) {
             // Fallback to local in-memory lockout tracking
             const current = lockoutMap.get(email) || { attempts: 0, lockedUntil: null };
             current.attempts += 1;
-            if (current.attempts >= MAX_ATTEMPTS) {
+            if (current.attempts >= 5) {
                 current.lockedUntil = Date.now() + getLockoutDuration(current.attempts);
             }
             lockoutMap.set(email, current);
-            remainingToLock = Math.max(0, MAX_ATTEMPTS - current.attempts);
+            remainingToLock = Math.max(0, 5 - current.attempts);
         }
 
         const msg = normalizeLoginErrorMessage(springRes.status);
@@ -201,8 +204,10 @@ export async function POST(req: NextRequest) {
 
     lockoutMap.delete(email);
 
-    const dataObj = (data && typeof data === "object" && "data" in (data as object)) ? (data as Record<string, unknown>).data : data;
-    const token = pickTokenFromPayload(dataObj as string | Record<string, unknown> | null);
+    const dataObj = (data && typeof data === "object" && "data" in data)
+        ? (data as Record<string, unknown>).data as Record<string, unknown> | string | null
+        : data;
+    const token = pickTokenFromPayload(dataObj);
 
     if (!token) {
         return NextResponse.json(
@@ -219,7 +224,9 @@ export async function POST(req: NextRequest) {
         }, { status: 403 });
     }
 
-    const backendExp = (data as Record<string, unknown>)?.rememberMeExpiration ?? (data as Record<string, Record<string, unknown>>)?.data?.rememberMeExpiration;
+    const backendExp =
+        (data as Record<string, unknown>)?.rememberMeExpiration ??
+        ((data as Record<string, unknown>)?.data as Record<string, unknown> | undefined)?.rememberMeExpiration;
     const cookieMaxAge = typeof backendExp === "number" ? backendExp : cookieMaxAgeFromJwt(token);
 
     const decoded = decodeJwtPayload(token);
@@ -242,10 +249,6 @@ export async function POST(req: NextRequest) {
         value: token,
         httpOnly: true,
         sameSite: "lax",
-        // secure: process.env.NODE_ENV === "production",
-
-        // for development only to allow cookies to work on http
-        // secure: process.env.NODE_ENV === "production",
         secure: false,
         path: "/",
         ...(remember ? { maxAge: cookieMaxAge } : {}),
@@ -257,7 +260,7 @@ export async function POST(req: NextRequest) {
             value: String(latitude),
             httpOnly: true,
             sameSite: "lax",
-            secure: process.env.NODE_ENV === "production",
+            secure: false,
             path: "/",
             ...(remember ? { maxAge: cookieMaxAge } : {}),
         });
@@ -266,7 +269,7 @@ export async function POST(req: NextRequest) {
             value: String(longitude),
             httpOnly: true,
             sameSite: "lax",
-            secure: process.env.NODE_ENV === "production",
+            secure: false,
             path: "/",
             ...(remember ? { maxAge: cookieMaxAge } : {}),
         });
