@@ -24,9 +24,34 @@ export default function AccountManagementPage() {
     const [selectedUser, setSelectedUser] = React.useState<AccountUser | null>(null);
     const [activeModal, setActiveModal] = React.useState<AccountAction | 'RESET_OPTIONS' | null>(null);
 
+    // Helper to dynamically check lock status based on lockUntil
+    const isLocked = React.useCallback((user: AccountUser) => {
+        if (!user.lockUntil) return false;
+        // Ensure SQL datetime format "YYYY-MM-DD HH:MM:SS" is parsed correctly across all browsers
+        // Append 'Z' to treat the database timestamp as UTC so it compares correctly with local time
+        const safeDateString = user.lockUntil.replace(' ', 'T') + (user.lockUntil.endsWith('Z') ? '' : 'Z');
+        return new Date(safeDateString) > new Date();
+    }, []);
+
     // Filter users based on tab and search
     const filteredUsers = React.useMemo(() => {
-        return users.filter(user => {
+        return users.map(user => {
+            const locked = isLocked(user);
+            let dynamicStatus: 'ACTIVE' | 'BLOCKED' | 'LOCKED' = 'ACTIVE';
+
+            if (user.isBlocked) {
+                dynamicStatus = 'BLOCKED';
+            } else if (locked) {
+                dynamicStatus = 'LOCKED';
+            } else {
+                dynamicStatus = 'ACTIVE';
+            }
+
+            return {
+                ...user,
+                status: dynamicStatus
+            } as AccountUser;
+        }).filter(user => {
             const matchesSearch =
                 user.fullName.toLowerCase().includes(searchQuery.toLowerCase()) ||
                 user.email.toLowerCase().includes(searchQuery.toLowerCase()) ||
@@ -41,14 +66,30 @@ export default function AccountManagementPage() {
 
             return true;
         });
-    }, [users, searchQuery, activeTab]);
+    }, [users, searchQuery, activeTab, isLocked]);
 
-    const counts = React.useMemo(() => ({
-        "All Users": users.length,
-        "Active": users.filter(u => u.status === "ACTIVE").length,
-        "Blocked": users.filter(u => u.status === "BLOCKED").length,
-        "Locked": users.filter(u => u.status === "LOCKED").length,
-    }), [users]);
+    const counts = React.useMemo(() => {
+        let active = 0;
+        let blocked = 0;
+        let locked = 0;
+
+        users.forEach(u => {
+            if (u.isBlocked) {
+                blocked++;
+            } else if (isLocked(u)) {
+                locked++;
+            } else {
+                active++;
+            }
+        });
+
+        return {
+            "All Users": users.length,
+            "Active": active,
+            "Blocked": blocked,
+            "Locked": locked,
+        };
+    }, [users, isLocked]);
 
     const handleAction = (action: AccountAction | 'RESET_INFO', user: AccountUser) => {
         setSelectedUser(user);

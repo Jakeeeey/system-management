@@ -52,6 +52,30 @@ export class AccountRepo {
         }
     }
 
+    /**
+     * Server-only method to fetch a single user by email.
+     */
+    static async getUserByEmail(email: string): Promise<AccountUser | null> {
+        try {
+            const filter = encodeURIComponent(JSON.stringify({ user_email: { _eq: email } }));
+            const url = `${DIRECTUS_URL}/items/user?access_token=${STATIC_TOKEN}&filter=${filter}&limit=1`;
+            
+            const response = await fetch(url, {
+                cache: 'no-store',
+                headers: { 'Content-Type': 'application/json' }
+            });
+
+            if (!response.ok) return null;
+
+            const result = await response.json();
+            const data = result.data?.[0];
+            return data ? this.mapToAccountUser(data) : null;
+        } catch (error) {
+            console.error("[AccountRepo] getUserByEmail error:", error);
+            return null;
+        }
+    }
+
     private static mapToAccountUser(user: DirectusUser): AccountUser {
         const fullName = [user.user_fname, user.user_mname, user.user_lname]
             .filter(Boolean)
@@ -66,8 +90,11 @@ export class AccountRepo {
         let status: 'ACTIVE' | 'BLOCKED' | 'LOCKED' = 'ACTIVE';
         if (isBlocked) {
             status = 'BLOCKED';
-        } else if (user.lock_until && new Date(user.lock_until) > new Date()) {
-            status = 'LOCKED';
+        } else if (user.lock_until) {
+            const safeDateString = user.lock_until.replace(' ', 'T') + (user.lock_until.endsWith('Z') ? '' : 'Z');
+            if (new Date(safeDateString) > new Date()) {
+                status = 'LOCKED';
+            }
         }
 
         // Fix image URL mapping - handle absolute paths vs Directus asset IDs
@@ -180,10 +207,10 @@ export class AccountRepo {
 
     static async forcePasswordReset(userId: number, reason: string, token?: string): Promise<boolean> {
         if (typeof window !== 'undefined') return this.proxyAction('FORCE_RESET', { userId, reason });
-        
+
         try {
             const url = `${SPRING_API_URL}/api/users/${userId}/force-reset`;
-            
+
             const response = await fetch(url, {
                 method: 'PUT',
                 headers: {
@@ -209,11 +236,11 @@ export class AccountRepo {
 
     static async sendResetEmail(userId: number, token?: string): Promise<boolean> {
         if (typeof window !== 'undefined') return this.proxyAction('SEND_RESET', { userId });
-        
+
         try {
             const url = `${SPRING_API_URL}/api/users/${userId}/send-reset-email`;
 
-            
+
             const response = await fetch(url, {
                 method: 'PUT',
                 headers: {

@@ -40,6 +40,7 @@ import {
     Layers,
     Ban,
     CheckCircle2,
+    Clock,
 } from "lucide-react"
 import { AccountUser, AccountAction } from "../types/account.types"
 import { cn } from "@/lib/utils"
@@ -60,6 +61,40 @@ const TABS = [
     "Blocked",
     "Locked"
 ];
+
+const CountdownTimer = ({ targetDate }: { targetDate: string }) => {
+    const [timeLeft, setTimeLeft] = React.useState<string>("");
+
+    React.useEffect(() => {
+        const calculateTime = () => {
+            const target = new Date(targetDate.replace(' ', 'T') + (targetDate.endsWith('Z') ? '' : 'Z'));
+            const now = new Date();
+            const diff = target.getTime() - now.getTime();
+
+            if (diff <= 0) return "Expired";
+
+            const hours = Math.floor(diff / (1000 * 60 * 60));
+            const minutes = Math.floor((diff / (1000 * 60)) % 60);
+            const seconds = Math.floor((diff / 1000) % 60);
+
+            if (hours > 0) return `${hours}h ${minutes}m ${seconds}s`;
+            return `${minutes}m ${seconds}s`;
+        };
+
+        setTimeLeft(calculateTime());
+        const timer = setInterval(() => setTimeLeft(calculateTime()), 1000);
+        return () => clearInterval(timer);
+    }, [targetDate]);
+
+    return (
+        <div className="flex items-center gap-1 mt-1 animate-pulse">
+            <Clock className="w-2.5 h-2.5 text-amber-500" />
+            <span className="text-[9px] font-mono font-bold text-amber-600 dark:text-amber-400">
+                {timeLeft}
+            </span>
+        </div>
+    );
+};
 
 export function AccountTable({
     data,
@@ -123,6 +158,7 @@ export function AccountTable({
             header: "Status",
             cell: ({ row }) => {
                 const status = row.getValue("status") as string;
+                const user = row.original;
                 const getStatusStyles = (s: string) => {
                     switch (s) {
                         case 'ACTIVE':
@@ -137,12 +173,17 @@ export function AccountTable({
                 };
 
                 return (
-                    <Badge variant="outline" className={cn(
-                        "text-[9px] font-black uppercase py-0 px-2 rounded-full border",
-                        getStatusStyles(status)
-                    )}>
-                        {status}
-                    </Badge>
+                    <div className="flex flex-col">
+                        <Badge variant="outline" className={cn(
+                            "text-[9px] font-black uppercase py-0 px-2 rounded-full border w-fit",
+                            getStatusStyles(status)
+                        )}>
+                            {status}
+                        </Badge>
+                        {status === 'LOCKED' && user.lockUntil && (
+                            <CountdownTimer targetDate={user.lockUntil} />
+                        )}
+                    </div>
                 );
             }
         },
@@ -215,6 +256,16 @@ export function AccountTable({
             },
         },
     });
+
+    const getVisiblePages = (currentPage: number, totalPages: number) => {
+        const maxVisible = 7; // Show up to 7 pages
+        if (totalPages <= maxVisible) return Array.from({ length: totalPages }, (_, i) => i);
+        if (currentPage <= 3) return Array.from({ length: maxVisible }, (_, i) => i);
+        if (currentPage >= totalPages - 4) return Array.from({ length: maxVisible }, (_, i) => totalPages - maxVisible + i);
+        return Array.from({ length: maxVisible }, (_, i) => currentPage - 3 + i);
+    };
+
+    const visiblePages = getVisiblePages(table.getState().pagination.pageIndex, table.getPageCount());
 
     return (
         <div className="space-y-4">
@@ -355,18 +406,18 @@ export function AccountTable({
                             Previous
                         </Button>
                         <div className="flex items-center gap-1.5">
-                            {Array.from({ length: Math.min(table.getPageCount(), 5) }, (_, i) => (
+                            {visiblePages.map((pageIndex) => (
                                 <button
-                                    key={i}
-                                    onClick={() => table.setPageIndex(i)}
+                                    key={pageIndex}
+                                    onClick={() => table.setPageIndex(pageIndex)}
                                     className={cn(
                                         "h-8 w-8 rounded-xl text-[10px] font-black transition-all",
-                                        table.getState().pagination.pageIndex === i
+                                        table.getState().pagination.pageIndex === pageIndex
                                             ? "bg-primary text-primary-foreground shadow-lg shadow-primary/20"
                                             : "text-slate-400 hover:bg-slate-100 dark:hover:bg-white/5"
                                     )}
                                 >
-                                    {i + 1}
+                                    {pageIndex + 1}
                                 </button>
                             ))}
                         </div>

@@ -63,10 +63,11 @@ function normalizeLoginErrorMessage(rawMsg: string, httpStatus?: number) {
 
     if (
         httpStatus === 429 ||
-        m.includes("http 429") ||
-        m.includes("too many attempts")
+        httpStatus === 423 ||
+        m.includes("too many attempts") ||
+        m === "account_locked"
     ) {
-        return "The account has been blocked, please contact the administrator."
+        return "Your account has been temporarily locked due to too many failed attempts. Please wait for the countdown to expire."
     }
 
     return msg
@@ -94,7 +95,7 @@ function LoginForm() {
     const [remember, setRemember] = React.useState(false)
     const [isPasswordRemembered, setIsPasswordRemembered] = React.useState(false)
     const [isLocked, setIsLocked] = React.useState(false)
-    const [lockoutEndTime, setLockoutEndTime] = React.useState<number | null>(null)
+    const [lockoutEndTime, setLockoutEndTime] = React.useState<number | string | null>(null)
     const [timeLeft, setTimeLeft] = React.useState(0)
     const [_isVerifying, _setIsVerifying] = React.useState(false)
     const [isRedirecting, setIsRedirecting] = React.useState(false)
@@ -131,19 +132,42 @@ function LoginForm() {
     }, [])
 
     // --- Countdown Timer Logic ---
+    // Synchronize the countdown timer
     React.useEffect(() => {
-        if (!isLocked || !lockoutEndTime) return
+        if (!isLocked || !lockoutEndTime) {
+            setTimeLeft(0)
+            return
+        }
 
-        const timer = setInterval(() => {
+        const calculateEndTs = () => {
+            if (typeof lockoutEndTime === 'string') {
+                const safeStr = lockoutEndTime.replace(' ', 'T') + (lockoutEndTime.endsWith('Z') ? '' : 'Z');
+                const ts = new Date(safeStr).getTime();
+                return isNaN(ts) ? (Date.now() + 300000) : ts;
+            }
+            return lockoutEndTime;
+        }
+
+        const endTs = calculateEndTs();
+
+        const updateTimer = () => {
             const now = Date.now()
-            const diff = Math.max(0, Math.ceil((lockoutEndTime - now) / 1000))
+            const diff = Math.max(0, Math.ceil((endTs - now) / 1000))
             setTimeLeft(diff)
 
             if (diff <= 0) {
                 setIsLocked(false)
                 setLockoutEndTime(null)
-                clearInterval(timer)
+                return true; // Finished
             }
+            return false;
+        }
+
+        // Run immediately
+        if (updateTimer()) return;
+
+        const timer = setInterval(() => {
+            if (updateTimer()) clearInterval(timer);
         }, 1000)
 
         return () => clearInterval(timer)
@@ -204,14 +228,21 @@ function LoginForm() {
             })
             const data = await res.json().catch(() => null)
 
-            if (res.status === 429 && data?.message === "TOO_MANY_ATTEMPTS") {
-                setLockoutEndTime(data.lockedUntil)
-                setIsLocked(true)
-                return
-            }
+            if ((res.status === 429 || res.status === 423) && 
+                (data?.message === "TOO_MANY_ATTEMPTS" || data?.message === "ACCOUNT_LOCKED")) {
+                
+                // Priority for setting end time:
+                // 1. Raw DB string (best for parity)
+                // 2. Relative duration + local time (best for clock desync)
+                // 3. Server timestamp (fallback)
+                if (data.lockUntilRaw) {
+                    setLockoutEndTime(data.lockUntilRaw)
+                } else if (data.lockDurationMs) {
+                    setLockoutEndTime(Date.now() + data.lockDurationMs)
+                } else {
+                    setLockoutEndTime(data.lockedUntil)
+                }
 
-            if (res.status === 423 && data?.message === "ACCOUNT_LOCKED") {
-                setLockoutEndTime(data.lockedUntil)
                 setIsLocked(true)
                 return
             }
