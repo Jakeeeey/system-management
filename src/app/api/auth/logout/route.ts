@@ -1,5 +1,5 @@
-import { NextResponse } from "next/server"
-import { COOKIE_NAME } from "@/lib/auth-utils"
+import { NextResponse } from "next/server";
+import { COOKIE_NAME } from "@/lib/auth-utils";
 
 export const runtime = "nodejs"
 export const dynamic = "force-dynamic"
