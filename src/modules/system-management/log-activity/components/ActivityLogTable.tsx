@@ -84,7 +84,10 @@ export function ActivityLogTable({
     counts = {}
 }: ActivityLogTableProps) {
     const [sorting, setSorting] = React.useState<SortingState>([]);
-    const [pageSize, setPageSize] = React.useState(8);
+    const [pagination, setPagination] = React.useState({
+        pageIndex: 0,
+        pageSize: 8,
+    });
 
     const PAGE_SIZE_OPTIONS = [5, 8, 10, 25, 50, 100];
 
@@ -243,18 +246,22 @@ export function ActivityLogTable({
         getPaginationRowModel: getPaginationRowModel(),
         onSortingChange: setSorting,
         getSortedRowModel: getSortedRowModel(),
+        onPaginationChange: setPagination,
         state: {
             sorting,
-            pagination: { pageIndex: 0, pageSize },
-        },
-        onPaginationChange: (updater) => {
-            const prev = { pageIndex: 0, pageSize };
-            const next = typeof updater === 'function' ? updater(prev) : updater;
-            if (next.pageSize !== prev.pageSize) {
-                setPageSize(next.pageSize);
-            }
+            pagination,
         },
     });
+
+    const getVisiblePages = (currentPage: number, totalPages: number) => {
+        const maxVisible = 7; // Show up to 7 pages
+        if (totalPages <= maxVisible) return Array.from({ length: totalPages }, (_, i) => i);
+        if (currentPage <= 3) return Array.from({ length: maxVisible }, (_, i) => i);
+        if (currentPage >= totalPages - 4) return Array.from({ length: maxVisible }, (_, i) => totalPages - maxVisible + i);
+        return Array.from({ length: maxVisible }, (_, i) => currentPage - 3 + i);
+    };
+
+    const visiblePages = getVisiblePages(table.getState().pagination.pageIndex, table.getPageCount());
 
     return (
         <div className="space-y-4">
@@ -374,12 +381,10 @@ export function ActivityLogTable({
                         <div className="flex items-center gap-1.5">
                             <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest whitespace-nowrap">Rows per page</span>
                             <Select
-                                value={String(pageSize)}
+                                value={String(pagination.pageSize)}
                                 onValueChange={(val: string) => {
                                     const next = Number(val);
-                                    setPageSize(next);
                                     table.setPageSize(next);
-                                    table.setPageIndex(0);
                                 }}
                             >
                                 <SelectTrigger className="h-7 w-16 text-[10px] font-black uppercase tracking-widest rounded-lg border-slate-200/60 dark:border-white/10 bg-slate-50/50 dark:bg-slate-900/40 text-slate-600 dark:text-slate-300 focus:ring-primary/30">
@@ -406,18 +411,18 @@ export function ActivityLogTable({
                             Prev
                         </Button>
                         <div className="flex items-center gap-1.5">
-                            {Array.from({ length: Math.min(table.getPageCount(), 5) }, (_, i) => (
+                            {visiblePages.map((pageIndex) => (
                                 <button
-                                    key={i}
-                                    onClick={() => table.setPageIndex(i)}
+                                    key={pageIndex}
+                                    onClick={() => table.setPageIndex(pageIndex)}
                                     className={cn(
                                         "h-6 w-6 rounded-lg text-[10px] font-black transition-all",
-                                        table.getState().pagination.pageIndex === i
+                                        table.getState().pagination.pageIndex === pageIndex
                                             ? "bg-primary text-primary-foreground shadow-md shadow-primary/20"
                                             : "text-slate-400 hover:bg-slate-100 dark:hover:bg-white/5"
                                     )}
                                 >
-                                    {i + 1}
+                                    {pageIndex + 1}
                                 </button>
                             ))}
                         </div>
