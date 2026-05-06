@@ -1,6 +1,6 @@
 // src/middleware.ts
 import { NextRequest, NextResponse } from "next/server"
-import { decodeJwtPayload, COOKIE_NAME, LAST_VISITED_PATH_COOKIE } from "@/lib/auth-utils"
+import { decodeJwtPayload, COOKIE_NAME, REFRESH_COOKIE_NAME, LAST_VISITED_PATH_COOKIE, pickTokenFromPayload } from "@/lib/auth-utils"
 
 const PUBLIC_FILE = /\.(.*)$/
 const BASELINE_PREFIXES = ["/main-dashboard"]
@@ -123,7 +123,45 @@ export async function middleware(req: NextRequest) {
         return NextResponse.next()
     }
 
-    const token = req.cookies.get(COOKIE_NAME)?.value
+    let token = req.cookies.get(COOKIE_NAME)?.value
+    
+    // --- Automatic Session Refresh ---
+    if (!token) {
+        const refreshToken = req.cookies.get(REFRESH_COOKIE_NAME)?.value;
+        const springBase = process.env.SPRING_API_BASE_URL;
+
+        if (refreshToken && springBase) {
+            try {
+                console.log("[Middleware] Access token missing, attempting refresh...");
+                const refreshUrl = `${springBase.replace(/\/$/, "")}/auth/refresh`;
+                
+                const refreshRes = await fetch(refreshUrl, {
+                    method: "POST",
+                    headers: {
+                        "Cookie": `${REFRESH_COOKIE_NAME}=${refreshToken}`,
+                        "Accept": "application/json",
+                    },
+                    cache: "no-store",
+                });
+
+                if (refreshRes.ok) {
+                    const data = await refreshRes.json();
+                    const newToken = pickTokenFromPayload(data);
+
+                    if (newToken) {
+                        console.log("[Middleware] Refresh successful.");
+                        token = newToken;
+                        
+                        // We will set the new token in the response cookies at the end
+                        // But we also need to make it available for the rest of this middleware run
+                    }
+                }
+            } catch (err) {
+                console.error("[Middleware] Refresh failed:", err);
+            }
+        }
+    }
+
     if (!token) {
         const url = req.nextUrl.clone()
         url.pathname = "/login"
@@ -257,6 +295,21 @@ export async function middleware(req: NextRequest) {
     }
 
     const response = NextResponse.next();
+
+    // --- Persist the refreshed token if we got one ---
+    const currentToken = req.cookies.get(COOKIE_NAME)?.value;
+    if (token && token !== currentToken) {
+        // This is a refreshed token
+        response.cookies.set({
+            name: COOKIE_NAME,
+            value: token,
+            httpOnly: true,
+            sameSite: "lax",
+            secure: process.env.NODE_ENV === "production",
+            path: "/",
+            maxAge: 60 * 60 * 24 * 7, // 7 days (since it's a persistent session)
+        });
+    }
 
     // --- 4. Persist Last Visited Path ---
     // We only save GET requests that aren't for APIs, assets, or error pages.

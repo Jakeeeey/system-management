@@ -93,15 +93,11 @@ function LoginForm() {
     const [email, setEmail] = React.useState("")
     const [hashPassword, setHashPassword] = React.useState("")
     const [remember, setRemember] = React.useState(false)
-    const [isPasswordRemembered, setIsPasswordRemembered] = React.useState(false)
     const [isLocked, setIsLocked] = React.useState(false)
     const [lockoutEndTime, setLockoutEndTime] = React.useState<number | string | null>(null)
     const [timeLeft, setTimeLeft] = React.useState(0)
-    const [_isVerifying, _setIsVerifying] = React.useState(false)
     const [isRedirecting, setIsRedirecting] = React.useState(false)
-    const [_isJumping, _setIsJumping] = React.useState(false)
     const [userName, setUserName] = React.useState("")
-    const [_pendingRedirect, _setPendingRedirect] = React.useState<string | null>(null)
 
     // Mouse Parallax for Background
     const mouseX = useMotionValue(0)
@@ -117,17 +113,12 @@ function LoginForm() {
         mouseY.set(clientY - window.innerHeight / 2)
     }
 
-    // --- Remember Me: Load saved credentials from localStorage ---
+    // --- Remember Me: Load saved email from localStorage ---
     React.useEffect(() => {
         const savedEmail = localStorage.getItem("remembered_email")
-        const savedPassword = localStorage.getItem("remembered_password")
         if (savedEmail) {
             setEmail(savedEmail)
             setRemember(true)
-        }
-        if (savedPassword) {
-            setHashPassword(savedPassword)
-            setIsPasswordRemembered(true)
         }
     }, [])
 
@@ -228,9 +219,9 @@ function LoginForm() {
             })
             const data = await res.json().catch(() => null)
 
-            if ((res.status === 429 || res.status === 423) && 
+            if ((res.status === 429 || res.status === 423) &&
                 (data?.message === "TOO_MANY_ATTEMPTS" || data?.message === "ACCOUNT_LOCKED")) {
-                
+
                 // Priority for setting end time:
                 // 1. Raw DB string (best for parity)
                 // 2. Relative duration + local time (best for clock desync)
@@ -285,13 +276,11 @@ function LoginForm() {
 
             toast.success("Welcome back!", { description: "Signing you in..." })
 
-            // --- Remember Me: Persist or clear credentials in localStorage ---
+            // --- Remember Me: Persist or clear email in localStorage ---
             if (remember) {
                 localStorage.setItem("remembered_email", email)
-                localStorage.setItem("remembered_password", hashPassword)
             } else {
                 localStorage.removeItem("remembered_email")
-                localStorage.removeItem("remembered_password")
             }
 
             setUserName(data.user?.firstName || "User")
@@ -454,13 +443,7 @@ function LoginForm() {
                                         <div className="space-y-2.5">
                                             <div className="flex items-center justify-between ml-1">
                                                 <Label className="text-[10px] font-black uppercase tracking-widest text-slate-500 dark:text-white/40">Password</Label>
-                                                <button
-                                                    type="button"
-                                                    onClick={() => router.push("/forgot-password")}
-                                                    className="text-[9px] font-bold text-slate-400 dark:text-white/20 hover:text-cyan-600 dark:hover:text-cyan-400 transition-colors"
-                                                >
-                                                    Forgot?
-                                                </button>
+
                                             </div>
                                             <div className="relative group/field">
                                                 <Lock className="absolute left-4 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-slate-400 dark:text-white/20 group-focus-within/field:text-cyan-500 transition-colors" />
@@ -474,31 +457,37 @@ function LoginForm() {
                                                     value={hashPassword}
                                                     onChange={(e) => {
                                                         setHashPassword(e.target.value)
-                                                        setIsPasswordRemembered(false)
                                                     }}
                                                     className="h-12 pl-12 pr-12 rounded-xl bg-white/60 dark:bg-black/20 border-slate-200 dark:border-white/10 text-slate-900 dark:text-white placeholder:text-slate-300 dark:placeholder:text-white/10 focus-visible:ring-1 focus-visible:ring-cyan-500/50 transition-all font-bold text-sm"
                                                 />
-                                                {!isPasswordRemembered && (
-                                                    <button
-                                                        type="button"
-                                                        onClick={() => setShowPw(!showPw)}
-                                                        className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400 dark:text-white/20 hover:text-slate-600 dark:hover:text-white transition-colors"
-                                                    >
-                                                        {showPw ? <EyeOff className="w-3.5 h-3.5" /> : <Eye className="w-3.5 h-3.5" />}
-                                                    </button>
-                                                )}
+                                                <button
+                                                    type="button"
+                                                    onClick={() => setShowPw(!showPw)}
+                                                    className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400 dark:text-white/20 hover:text-slate-600 dark:hover:text-white transition-colors"
+                                                >
+                                                    {showPw ? <EyeOff className="w-3.5 h-3.5" /> : <Eye className="w-3.5 h-3.5" />}
+                                                </button>
                                             </div>
                                         </div>
 
-                                        {/* Remember me */}
-                                        <div className="flex items-center gap-2.5 ml-1">
-                                            <Checkbox
-                                                id="rememberMe"
-                                                checked={remember}
-                                                onCheckedChange={(v) => setRemember(Boolean(v))}
-                                                className="w-3.5 h-3.5 border-slate-300 dark:border-white/10 data-[state=checked]:bg-cyan-500 data-[state=checked]:border-cyan-500"
-                                            />
-                                            <label htmlFor="rememberMe" className="text-[10px] font-bold text-slate-500 dark:text-white/40 cursor-pointer">Stay signed in on this device</label>
+                                        {/* Remember me & Forgot Password */}
+                                        <div className="flex items-center justify-between ml-1">
+                                            <div className="flex items-center gap-2.5">
+                                                <Checkbox
+                                                    id="rememberMe"
+                                                    checked={remember}
+                                                    onCheckedChange={(v) => setRemember(Boolean(v))}
+                                                    className="w-3.5 h-3.5 border-slate-300 dark:border-white/10 data-[state=checked]:bg-cyan-500 data-[state=checked]:border-cyan-500"
+                                                />
+                                                <label htmlFor="rememberMe" className="text-[10px] font-bold text-slate-500 dark:text-white/40 cursor-pointer">Stay signed in on this device</label>
+                                            </div>
+                                            <button
+                                                type="button"
+                                                onClick={() => router.push("/forgot-password")}
+                                                className="text-[10px] font-bold text-slate-400 dark:text-white/20 hover:text-cyan-600 dark:hover:text-cyan-400 transition-colors"
+                                            >
+                                                Forgot Password?
+                                            </button>
                                         </div>
 
                                         {/* Submit */}
