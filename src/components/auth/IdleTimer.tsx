@@ -1,76 +1,79 @@
-"use client"
+"use client";
 
-import * as React from "react"
-import { useRouter } from "next/navigation"
-import { toast } from "sonner"
+import * as React from "react";
+import { toast } from "sonner";
 
-const IDLE_TIMEOUT = 15 * 60 * 1000 // 15 minutes
-const WARNING_TIMEOUT = 14 * 60 * 1000 // Show warning at 14 minutes
+const IDLE_TIMEOUT = 24 * 60 * 60 * 1000; // 24 hours
+const WARNING_BEFORE = 15 * 60 * 1000; // 15 minute warning (at 23h 45m)
 
 export function IdleTimer() {
-    const router = useRouter()
-    const timeoutRef = React.useRef<NodeJS.Timeout | null>(null)
-    const warningRef = React.useRef<NodeJS.Timeout | null>(null)
+    const [isIdle, setIsIdle] = React.useState(false);
+    const timeoutRef = React.useRef<NodeJS.Timeout | null>(null);
+    const warningRef = React.useRef<NodeJS.Timeout | null>(null);
 
     const logout = React.useCallback(async () => {
         try {
-            const res = await fetch("/api/auth/logout", { method: "POST" })
-            if (res.ok) {
-                toast.info("Session Expired", {
-                    description: "You have been logged out due to inactivity.",
-                })
-                router.push("/login")
-                router.refresh()
-            }
-        } catch (error) {
-            console.error("[IdleTimer] Logout failed:", error)
+            // Attempt silent logout
+            await fetch("/api/auth/logout", { method: "POST" });
+        } catch {
+            // Ignore error
         }
-    }, [router])
+        toast.info("Session Expired", {
+            description: "You have been logged out due to inactivity.",
+            duration: 10000,
+        });
+        window.location.href = "/login";
+    }, []);
+
+    const resetTimerRef = React.useRef<() => void>(() => { });
 
     const resetTimer = React.useCallback(() => {
-        if (timeoutRef.current) clearTimeout(timeoutRef.current)
-        if (warningRef.current) clearTimeout(warningRef.current)
+        if (timeoutRef.current) clearTimeout(timeoutRef.current);
+        if (warningRef.current) clearTimeout(warningRef.current);
 
-        // Set warning timer
+        // Don't restart if already idle
+        if (isIdle) return;
+
+        // Set warning at 23 hours 45 minutes
         warningRef.current = setTimeout(() => {
             toast.warning("Inactivity Warning", {
-                description: "Your session will expire in 1 minute due to inactivity.",
-                duration: 10000,
-            })
-        }, WARNING_TIMEOUT)
+                description: "Your session will expire in 15 minutes due to inactivity. Move your mouse or type to stay logged in.",
+                duration: 15 * 60 * 1000,
+                action: {
+                    label: "I'm back",
+                    onClick: () => resetTimerRef.current(),
+                },
+            });
+        }, IDLE_TIMEOUT - WARNING_BEFORE);
 
-        // Set logout timer
-        timeoutRef.current = setTimeout(logout, IDLE_TIMEOUT)
-    }, [logout])
+        // Set logout at 24 hours
+        timeoutRef.current = setTimeout(() => {
+            setIsIdle(true);
+            logout();
+        }, IDLE_TIMEOUT);
+    }, [isIdle, logout]);
 
     React.useEffect(() => {
-        const events = [
-            "mousedown",
-            "mousemove",
-            "keypress",
-            "scroll",
-            "touchstart",
-            "click"
-        ]
+        resetTimerRef.current = resetTimer;
+    }, [resetTimer]);
 
-        const handleActivity = () => resetTimer()
+    React.useEffect(() => {
+        const events = ["mousedown", "mousemove", "keypress", "scroll", "touchstart"];
 
-        // Initialize timer
-        resetTimer()
+        const handleActivity = () => {
+            if (isIdle) return;
+            resetTimer();
+        };
 
-        // Add event listeners
-        events.forEach((event) => {
-            window.addEventListener(event, handleActivity)
-        })
+        events.forEach((e) => window.addEventListener(e, handleActivity));
+        resetTimer(); // Initialize
 
         return () => {
-            if (timeoutRef.current) clearTimeout(timeoutRef.current)
-            if (warningRef.current) clearTimeout(warningRef.current)
-            events.forEach((event) => {
-                window.removeEventListener(event, handleActivity)
-            })
-        }
-    }, [resetTimer])
+            events.forEach((e) => window.removeEventListener(e, handleActivity));
+            if (timeoutRef.current) clearTimeout(timeoutRef.current);
+            if (warningRef.current) clearTimeout(warningRef.current);
+        };
+    }, [isIdle, resetTimer]);
 
-    return null // This component doesn't render anything
+    return null; // Side-effect only component
 }
