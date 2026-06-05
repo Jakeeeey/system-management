@@ -17,7 +17,7 @@ export async function POST(req: NextRequest) {
     try {
         const text = await req.text();
 
-        
+
         if (!text) {
             console.error("[api/account-management] Empty request body");
             return NextResponse.json({ success: false, message: "Empty request body" }, { status: 400 });
@@ -30,9 +30,9 @@ export async function POST(req: NextRequest) {
             console.error("[api/account-management] JSON parse error:", e);
             return NextResponse.json({ success: false, message: "Invalid JSON" }, { status: 400 });
         }
-        
+
         const { action, userId, ...data } = body;
-        
+
         // Extract token from cookies for authorized backend requests
         const token = req.cookies.get('vos_access_token')?.value;
 
@@ -57,6 +57,10 @@ export async function POST(req: NextRequest) {
             case 'SEND_RESET':
                 success = await AccountRepo.sendResetEmail(userId, token);
                 message = success ? "Reset email sent" : "Failed to send reset email";
+                break;
+            case 'DIRECT_CHANGE':
+                success = await AccountRepo.changePassword(userId, data.newPassword, data.reason, token);
+                message = success ? "Password changed successfully" : "Failed to change password. Backend returned an error.";
                 break;
             case 'SET_TIMEOUT':
                 success = await AccountRepo.setTimeoutUser(userId, data.duration, data.reason);

@@ -8,7 +8,8 @@ import {
     UnblockUserModal,
     ForcePasswordResetModal,
     SendResetEmailModal,
-    PasswordResetOptionsModal
+    PasswordResetOptionsModal,
+    DirectChangePasswordModal
 } from "./components/AccountModals"
 import { AccountUser, AccountAction } from "./types/account.types"
 import { UserCog, ShieldCheck, UserMinus, ShieldAlert, RefreshCcw } from "lucide-react"
@@ -93,7 +94,7 @@ export default function AccountManagementPage() {
 
     const handleAction = (action: AccountAction | 'RESET_INFO', user: AccountUser) => {
         setSelectedUser(user);
-        if (action === 'FORCE_RESET' || action === 'SEND_RESET') {
+        if (action === 'FORCE_RESET' || action === 'SEND_RESET' || action === 'DIRECT_CHANGE') {
             setActiveModal('RESET_OPTIONS');
         } else {
             setActiveModal(action as AccountAction);
@@ -211,6 +212,12 @@ export default function AccountManagementPage() {
                 onClose={() => setActiveModal(null)}
                 user={selectedUser}
                 onConfirm={(data) => executeAction('SEND_RESET', data)}
+            />
+            <DirectChangePasswordModal
+                isOpen={activeModal === 'DIRECT_CHANGE'}
+                onClose={() => setActiveModal(null)}
+                user={selectedUser}
+                onConfirm={(data) => executeAction('DIRECT_CHANGE', data)}
             />
 
             <PasswordResetOptionsModal

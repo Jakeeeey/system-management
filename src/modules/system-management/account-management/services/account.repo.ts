@@ -59,7 +59,7 @@ export class AccountRepo {
         try {
             const filter = encodeURIComponent(JSON.stringify({ user_email: { _eq: email } }));
             const url = `${DIRECTUS_URL}/items/user?access_token=${STATIC_TOKEN}&filter=${filter}&limit=1`;
-            
+
             const response = await fetch(url, {
                 cache: 'no-store',
                 headers: { 'Content-Type': 'application/json' }
@@ -260,6 +260,35 @@ export class AccountRepo {
             return response.ok;
         } catch (error) {
             console.error(`[AccountRepo] Server send reset email error for ${userId}:`, error);
+            return false;
+        }
+    }
+
+    static async changePassword(userId: number, newPassword: string, reason: string, token?: string): Promise<boolean> {
+        if (typeof window !== 'undefined') return this.proxyAction('DIRECT_CHANGE', { userId, newPassword, reason });
+
+        try {
+            const url = `${SPRING_API_URL}/users/${userId}/change-password`;
+
+            const response = await fetch(url, {
+                method: 'PUT',
+                headers: {
+                    'Content-Type': 'application/json',
+                    ...(token ? { 'Authorization': `Bearer ${token}` } : {})
+                },
+                body: JSON.stringify({
+                    newPassword,
+                    reason
+                })
+            });
+
+            if (!response.ok) {
+                const errorData = await response.text();
+                console.error(`[AccountRepo] Server change password error for ${userId}. Status: ${response.status}, Body: ${errorData}`);
+            }
+            return response.ok;
+        } catch (error) {
+            console.error(`[AccountRepo] Server change password error for ${userId}:`, error);
             return false;
         }
     }

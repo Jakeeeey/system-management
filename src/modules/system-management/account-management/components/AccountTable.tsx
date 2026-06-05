@@ -36,6 +36,7 @@ import {
     Eye,
     Key,
     Mail,
+    Lock,
     Filter,
     Layers,
     Ban,
@@ -231,6 +232,9 @@ export function AccountTable({
                                 </DropdownMenuItem>
                                 <DropdownMenuItem className="text-xs cursor-pointer" onClick={() => onAction('SEND_RESET', user)}>
                                     <Mail className="w-3.5 h-3.5 mr-2 text-fuchsia-500" /> Send Reset Email
+                                </DropdownMenuItem>
+                                <DropdownMenuItem className="text-xs cursor-pointer" onClick={() => onAction('DIRECT_CHANGE', user)}>
+                                    <Lock className="w-3.5 h-3.5 mr-2 text-rose-500" /> Direct Change Password
                                 </DropdownMenuItem>
                             </DropdownMenuContent>
                         </DropdownMenu>
