@@ -34,4 +34,5 @@ export type AccountAction =
     | 'UNBLOCK'
     | 'FORCE_RESET'
     | 'SEND_RESET'
+    | 'DIRECT_CHANGE'
     | 'VIEW_HISTORY';

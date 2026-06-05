@@ -11,6 +11,7 @@ interface AccountActionPayload {
     duration?: string;
     message?: string;
     concerns?: string;
+    newPassword?: string;
 }
 
 export function useAccounts() {
@@ -56,6 +57,10 @@ export function useAccounts() {
                     success = await AccountRepo.sendResetEmail(data.userId);
                     if (success) toast.success("Reset email sent");
                     break;
+                case 'DIRECT_CHANGE':
+                    success = await AccountRepo.changePassword(data.userId, data.newPassword ?? "", data.reason ?? "");
+                    if (success) toast.success("Password changed successfully");
+                    break;
                 case 'SET_TIMEOUT':
                     success = await AccountRepo.setTimeoutUser(data.userId, data.duration ?? "", data.reason ?? "");
                     if (success) toast.success(`Timeout set for ${data.duration}`);
@@ -71,7 +76,7 @@ export function useAccounts() {
                 default:
                     console.warn("Unknown action:", action);
             }
-            
+
             if (success) {
                 // Refresh list or update local state
                 fetchUsers();
