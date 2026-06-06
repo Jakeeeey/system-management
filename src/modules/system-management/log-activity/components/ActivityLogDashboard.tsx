@@ -4,11 +4,11 @@ import * as React from "react"
 import { useActivityLogs } from "../hooks/useActivityLogs"
 import { StatCards } from "./StatCards"
 import { ActivityLogTable } from "./ActivityLogTable"
+import { ExportLogsModal } from "./ExportLogsModal"
 import { Button } from "@/components/ui/button"
 import { 
     RefreshCcw, 
-    Download, 
-    Bell
+    Download
 } from "lucide-react"
 import { Skeleton } from "@/components/ui/skeleton"
 
@@ -27,6 +27,7 @@ export function ActivityLogDashboard() {
         counts,
         actions 
     } = useActivityLogs();
+    const [isExportModalOpen, setIsExportModalOpen] = React.useState(false);
 
     if (isLoading || !stats || !charts) {
         return <ActivityLogSkeleton />;
@@ -45,11 +46,8 @@ export function ActivityLogDashboard() {
                         <Button variant="outline" size="sm" onClick={actions.refresh} className="bg-slate-900/5 dark:bg-white/5 border-slate-200 dark:border-white/10 h-9 text-xs font-bold uppercase tracking-wider">
                             <RefreshCcw className="w-4 h-4 mr-2 text-emerald-500" /> Refresh
                         </Button>
-                        <Button variant="outline" size="sm" className="bg-slate-900/5 dark:bg-white/5 border-slate-200 dark:border-white/10 h-9 text-xs font-bold uppercase tracking-wider">
+                        <Button variant="outline" size="sm" onClick={() => setIsExportModalOpen(true)} className="bg-slate-900/5 dark:bg-white/5 border-slate-200 dark:border-white/10 h-9 text-xs font-bold uppercase tracking-wider cursor-pointer">
                             <Download className="w-4 h-4 mr-2 text-orange-500" /> Export
-                        </Button>
-                        <Button variant="outline" size="icon" className="bg-slate-900/5 dark:bg-white/5 border-slate-200 dark:border-white/10 h-9 w-9">
-                            <Bell className="w-4 h-4 text-cyan-500" />
                         </Button>
                     </div>
                 </div>
@@ -69,6 +67,13 @@ export function ActivityLogDashboard() {
                     onDateRangeChange={setDateRange}
                 />
             </div>
+
+            <ExportLogsModal
+                isOpen={isExportModalOpen}
+                onClose={() => setIsExportModalOpen(false)}
+                defaultDateRange={dateRange}
+                onExport={actions.export}
+            />
         </div>
     );
 }
