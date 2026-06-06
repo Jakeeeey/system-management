@@ -42,9 +42,14 @@ import {
     Ban,
     CheckCircle2,
     Clock,
+    Calendar as CalendarIcon,
+    X,
 } from "lucide-react"
 import { AccountUser, AccountAction } from "../types/account.types"
 import { cn } from "@/lib/utils"
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
+import { Calendar } from "@/components/ui/calendar"
+import { format } from "date-fns"
 
 interface AccountTableProps {
     data: AccountUser[];
@@ -54,6 +59,8 @@ interface AccountTableProps {
     onSearchChange: (query: string) => void;
     onAction: (action: AccountAction, user: AccountUser) => void;
     counts?: Record<string, number>;
+    dateRange: { from: Date | undefined; to: Date | undefined };
+    onDateRangeChange: (range: { from: Date | undefined; to: Date | undefined }) => void;
 }
 
 const TABS = [
@@ -104,7 +111,9 @@ export function AccountTable({
     searchQuery,
     onSearchChange,
     onAction,
-    counts = {}
+    counts = {},
+    dateRange,
+    onDateRangeChange
 }: AccountTableProps) {
     const [sorting, setSorting] = React.useState<SortingState>([]);
 
@@ -138,6 +147,24 @@ export function AccountTable({
                     <span className="text-xs font-bold text-slate-700 dark:text-white/80">{row.getValue("position")}</span>
                 </div>
             )
+        },
+        {
+            accessorKey: "dateOfHire",
+            header: "Date of Hire",
+            cell: ({ row }) => {
+                const dateVal = row.original.dateOfHire;
+                if (!dateVal) return <span className="text-xs text-slate-400 font-medium">—</span>;
+                try {
+                    const formatted = new Intl.DateTimeFormat('en-US', {
+                        month: 'short',
+                        day: 'numeric',
+                        year: 'numeric'
+                    }).format(new Date(dateVal));
+                    return <span className="text-xs font-mono font-bold text-slate-700 dark:text-white/80">{formatted}</span>;
+                } catch {
+                    return <span className="text-xs font-mono font-bold text-slate-700 dark:text-white/80">{dateVal}</span>;
+                }
+            }
         },
         {
             accessorKey: "role",
@@ -293,6 +320,74 @@ export function AccountTable({
                             />
                         </div>
                         <div className="flex items-center gap-3">
+                            {/* Date Range Picker */}
+                            <Popover>
+                                <PopoverTrigger asChild>
+                                    <Button
+                                        variant="outline"
+                                        className={cn(
+                                            "h-12 px-5 text-xs font-bold text-slate-500 dark:text-slate-400 bg-slate-50/50 dark:bg-slate-900/40 border-slate-200/60 dark:border-white/5 rounded-2xl hover:bg-primary/5 hover:text-primary transition-all flex items-center gap-2 cursor-pointer",
+                                            (dateRange.from || dateRange.to) && "border-primary/30 text-primary bg-primary/5 hover:bg-primary/10"
+                                        )}
+                                    >
+                                        <CalendarIcon className="w-4 h-4 mr-1 text-slate-400 group-hover:text-primary" />
+                                        {dateRange.from ? (
+                                            dateRange.to ? (
+                                                <>
+                                                    {format(dateRange.from, "LLL dd, y")} -{" "}
+                                                    {format(dateRange.to, "LLL dd, y")}
+                                                </>
+                                            ) : (
+                                                format(dateRange.from, "LLL dd, y")
+                                            )
+                                        ) : (
+                                            <span>Filter by Hire Date</span>
+                                        )}
+                                        {(dateRange.from || dateRange.to) && (
+                                            <span 
+                                                className="ml-2 p-0.5 rounded-full hover:bg-rose-500/10 text-rose-500 cursor-pointer"
+                                                onClick={(e) => {
+                                                    e.stopPropagation();
+                                                    onDateRangeChange({ from: undefined, to: undefined });
+                                                }}
+                                            >
+                                                <X className="w-3.5 h-3.5" />
+                                            </span>
+                                        )}
+                                    </Button>
+                                </PopoverTrigger>
+                                <PopoverContent className="w-auto p-0 bg-white dark:bg-slate-950 border border-slate-200 dark:border-white/10 rounded-2xl shadow-2xl z-[100]" align="end">
+                                    <Calendar
+                                        initialFocus
+                                        mode="range"
+                                        defaultMonth={dateRange.from}
+                                        selected={{
+                                            from: dateRange.from,
+                                            to: dateRange.to
+                                        }}
+                                        onSelect={(range) => {
+                                            onDateRangeChange({
+                                                from: range?.from,
+                                                to: range?.to
+                                            });
+                                        }}
+                                        numberOfMonths={2}
+                                    />
+                                    {(dateRange.from || dateRange.to) && (
+                                        <div className="p-3 border-t border-slate-100 dark:border-white/5 flex justify-end bg-slate-50/50 dark:bg-slate-900/20">
+                                            <Button
+                                                variant="ghost"
+                                                size="sm"
+                                                className="text-xs text-rose-500 hover:text-rose-600 hover:bg-rose-50/50 dark:hover:bg-rose-500/10 font-bold rounded-xl"
+                                                onClick={() => onDateRangeChange({ from: undefined, to: undefined })}
+                                            >
+                                                Clear Filter
+                                            </Button>
+                                        </div>
+                                    )}
+                                </PopoverContent>
+                            </Popover>
+
                             <Button variant="ghost" className="h-12 px-5 text-xs font-bold text-slate-500 hover:bg-primary/5 rounded-2xl border border-transparent hover:border-primary/10">
                                 <Filter className="w-4 h-4 mr-2" /> Advanced Filters
                             </Button>

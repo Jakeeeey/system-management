@@ -28,6 +28,10 @@ export const useActivityLogs = () => {
 
     const [activeTab, setActiveTab] = useState<string>("All Activities");
     const [searchQuery, setSearchQuery] = useState("");
+    const [dateRange, setDateRange] = useState<{ from: Date | undefined; to: Date | undefined }>({
+        from: undefined,
+        to: undefined
+    });
 
     const fetchDashboardData = useCallback(async () => {
         setIsLoading(true);
@@ -86,8 +90,31 @@ export const useActivityLogs = () => {
             );
         }
 
+        // Filter by date range
+        if (dateRange.from || dateRange.to) {
+            result = result.filter(a => {
+                if (!a.timestamp) return false;
+                try {
+                    const logDate = new Date(a.timestamp);
+                    const checkDate = new Date(logDate.getFullYear(), logDate.getMonth(), logDate.getDate());
+
+                    if (dateRange.from) {
+                        const fromDate = new Date(dateRange.from.getFullYear(), dateRange.from.getMonth(), dateRange.from.getDate());
+                        if (checkDate < fromDate) return false;
+                    }
+                    if (dateRange.to) {
+                        const toDate = new Date(dateRange.to.getFullYear(), dateRange.to.getMonth(), dateRange.to.getDate());
+                        if (checkDate > toDate) return false;
+                    }
+                    return true;
+                } catch {
+                    return false;
+                }
+            });
+        }
+
         setFilteredActivities(result);
-    }, [activeTab, searchQuery, activities]);
+    }, [activeTab, searchQuery, activities, dateRange]);
 
     const counts: Record<string, number> = {
         "All Activities": activities.length,
@@ -114,6 +141,8 @@ export const useActivityLogs = () => {
         setActiveTab,
         searchQuery,
         setSearchQuery,
+        dateRange,
+        setDateRange,
         counts,
         actions: {
             refresh: fetchDashboardData

@@ -12,6 +12,7 @@ export interface DirectusUser {
     failed_attempts: number;
     user_contact?: string | null;
     user_department?: number | null;
+    user_dateOfHire?: string | null;
 }
 
 export interface AccountUser {
@@ -27,6 +28,7 @@ export interface AccountUser {
     lockUntil: string | null;
     failedAttempts: number;
     status: 'ACTIVE' | 'BLOCKED' | 'LOCKED';
+    dateOfHire?: string | null;
 }
 
 export type AccountAction =

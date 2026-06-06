@@ -22,6 +22,8 @@ export function ActivityLogDashboard() {
         setActiveTab, 
         searchQuery, 
         setSearchQuery,
+        dateRange,
+        setDateRange,
         counts,
         actions 
     } = useActivityLogs();
@@ -63,6 +65,8 @@ export function ActivityLogDashboard() {
                     searchQuery={searchQuery}
                     onSearchChange={setSearchQuery}
                     counts={counts}
+                    dateRange={dateRange}
+                    onDateRangeChange={setDateRange}
                 />
             </div>
         </div>

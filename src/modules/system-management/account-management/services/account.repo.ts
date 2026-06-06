@@ -119,7 +119,8 @@ export class AccountRepo {
             isBlocked: isBlocked,
             lockUntil: user.lock_until,
             failedAttempts: user.failed_attempts || 0,
-            status
+            status,
+            dateOfHire: user.user_dateOfHire || null
         };
     }
 
