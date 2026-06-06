@@ -132,6 +132,90 @@ export const useActivityLogs = () => {
         "DELETE_USER": activities.filter(a => a.type === "DELETE_USER").length,
     };
 
+    const exportLogs = useCallback((options?: {
+        dateRange: { from: Date | undefined; to: Date | undefined };
+        activities: string[];
+    }) => {
+        const dateFilter = options?.dateRange || { from: undefined, to: undefined };
+        const activityFilter = options?.activities || [];
+
+        let exportSubset = activities;
+
+        // Filter by date range (if provided)
+        if (dateFilter.from || dateFilter.to) {
+            exportSubset = exportSubset.filter(a => {
+                if (!a.timestamp) return false;
+                try {
+                    const logDate = new Date(a.timestamp);
+                    const checkDate = new Date(logDate.getFullYear(), logDate.getMonth(), logDate.getDate());
+
+                    if (dateFilter.from) {
+                        const fromDate = new Date(dateFilter.from.getFullYear(), dateFilter.from.getMonth(), dateFilter.from.getDate());
+                        if (checkDate < fromDate) return false;
+                    }
+                    if (dateFilter.to) {
+                        const toDate = new Date(dateFilter.to.getFullYear(), dateFilter.to.getMonth(), dateFilter.to.getDate());
+                        if (checkDate > toDate) return false;
+                    }
+                    return true;
+                } catch {
+                    return false;
+                }
+            });
+        }
+
+        // Filter by selected activity types (if provided)
+        if (activityFilter.length > 0) {
+            exportSubset = exportSubset.filter(a => activityFilter.includes(a.type));
+        }
+
+        if (exportSubset.length === 0) {
+            toast.warning("No activities found", {
+                description: "There are no activity logs matching the selected export options."
+            });
+            return;
+        }
+
+        try {
+            const headers = ["Timestamp", "User Name", "User Email", "Activity", "Location", "IP Address", "Device", "Status", "Reason"];
+            const csvRows = [headers.join(",")];
+            
+            for (const row of exportSubset) {
+                const values = [
+                    row.timestamp ? new Date(row.timestamp).toLocaleString() : "",
+                    `"${(row.userName || "").replace(/"/g, '""')}"`,
+                    `"${(row.userEmail || "").replace(/"/g, '""')}"`,
+                    row.type,
+                    `"${(row.location || "Unknown Location").replace(/"/g, '""')}"`,
+                    row.ipAddress || "",
+                    `"${(row.device || "").replace(/"/g, '""')}"`,
+                    row.status,
+                    `"${(row.reason || "").replace(/"/g, '""')}"`
+                ];
+                csvRows.push(values.join(","));
+            }
+            
+            const blob = new Blob([csvRows.join("\n")], { type: 'text/csv;charset=utf-8;' });
+            const url = URL.createObjectURL(blob);
+            const link = document.createElement("a");
+            link.setAttribute("href", url);
+            link.setAttribute("download", `user_activity_logs_export.csv`);
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+            URL.revokeObjectURL(url);
+
+            toast.success("Export successful", {
+                description: `Exported ${exportSubset.length} activities successfully.`
+            });
+        } catch (error) {
+            console.error("Failed to export logs:", error);
+            toast.error("Export failed", {
+                description: "An error occurred while generating the CSV file."
+            });
+        }
+    }, [activities]);
+
     return {
         isLoading,
         stats,
@@ -145,7 +229,8 @@ export const useActivityLogs = () => {
         setDateRange,
         counts,
         actions: {
-            refresh: fetchDashboardData
+            refresh: fetchDashboardData,
+            export: exportLogs
         }
     };
 };
