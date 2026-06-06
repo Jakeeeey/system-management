@@ -35,7 +35,7 @@ import {
     Key,
     Mail,
     Shield,
-    Calendar,
+    Calendar as CalendarIcon,
     Filter,
     Layers,
     Ban,
@@ -46,9 +46,13 @@ import {
     UserX,
     Clock,
     Lock,
+    X,
 } from "lucide-react"
 import { ActivityLogEntry } from "../types/activity-log.types"
 import { cn } from "@/lib/utils"
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
+import { Calendar } from "@/components/ui/calendar"
+import { format } from "date-fns"
 
 interface ActivityLogTableProps {
     data: ActivityLogEntry[];
@@ -57,6 +61,8 @@ interface ActivityLogTableProps {
     searchQuery: string;
     onSearchChange: (query: string) => void;
     counts?: Record<string, number>;
+    dateRange: { from: Date | undefined; to: Date | undefined };
+    onDateRangeChange: (range: { from: Date | undefined; to: Date | undefined }) => void;
 }
 
 const TABS = [
@@ -81,7 +87,9 @@ export function ActivityLogTable({
     onTabChange,
     searchQuery,
     onSearchChange,
-    counts = {}
+    counts = {},
+    dateRange,
+    onDateRangeChange
 }: ActivityLogTableProps) {
     const [sorting, setSorting] = React.useState<SortingState>([]);
     const [pagination, setPagination] = React.useState({
@@ -287,9 +295,74 @@ export function ActivityLogTable({
                             />
                         </div>
                         <div className="flex items-center gap-2">
-                            <Button variant="ghost" size="sm" className="h-9 text-xs text-slate-500 hover:text-primary hover:bg-primary/5 rounded-xl">
-                                <Calendar className="w-3.5 h-3.5 mr-2" /> Last 30 days
-                            </Button>
+                            <Popover>
+                                <PopoverTrigger asChild>
+                                    <Button
+                                        variant="outline"
+                                        size="sm"
+                                        className={cn(
+                                            "h-9 px-3 text-xs font-bold text-slate-500 dark:text-slate-400 bg-slate-50/50 dark:bg-slate-900/40 border-slate-200/60 dark:border-white/5 rounded-xl hover:bg-primary/5 hover:text-primary transition-all flex items-center gap-1.5 cursor-pointer",
+                                            (dateRange.from || dateRange.to) && "border-primary/30 text-primary bg-primary/5 hover:bg-primary/10"
+                                        )}
+                                    >
+                                        <CalendarIcon className="w-3.5 h-3.5 mr-1 text-slate-400 group-hover:text-primary" />
+                                        {dateRange.from ? (
+                                            dateRange.to ? (
+                                                <>
+                                                    {format(dateRange.from, "LLL dd, y")} -{" "}
+                                                    {format(dateRange.to, "LLL dd, y")}
+                                                </>
+                                            ) : (
+                                                format(dateRange.from, "LLL dd, y")
+                                            )
+                                        ) : (
+                                            <span>Filter by Date</span>
+                                        )}
+                                        {(dateRange.from || dateRange.to) && (
+                                            <span 
+                                                className="ml-1.5 p-0.5 rounded-full hover:bg-rose-500/10 text-rose-500 cursor-pointer"
+                                                onClick={(e) => {
+                                                    e.stopPropagation();
+                                                    onDateRangeChange({ from: undefined, to: undefined });
+                                                }}
+                                            >
+                                                <X className="w-3 h-3" />
+                                            </span>
+                                        )}
+                                    </Button>
+                                </PopoverTrigger>
+                                <PopoverContent className="w-auto p-0 bg-white dark:bg-slate-950 border border-slate-200 dark:border-white/10 rounded-2xl shadow-2xl z-[100]" align="end">
+                                    <Calendar
+                                        initialFocus
+                                        mode="range"
+                                        defaultMonth={dateRange.from}
+                                        selected={{
+                                            from: dateRange.from,
+                                            to: dateRange.to
+                                        }}
+                                        onSelect={(range) => {
+                                            onDateRangeChange({
+                                                from: range?.from,
+                                                to: range?.to
+                                            });
+                                        }}
+                                        numberOfMonths={2}
+                                    />
+                                    {(dateRange.from || dateRange.to) && (
+                                        <div className="p-3 border-t border-slate-100 dark:border-white/5 flex justify-end bg-slate-50/50 dark:bg-slate-900/20">
+                                            <Button
+                                                variant="ghost"
+                                                size="sm"
+                                                className="text-xs text-rose-500 hover:text-rose-600 hover:bg-rose-50/50 dark:hover:bg-rose-500/10 font-bold rounded-xl"
+                                                onClick={() => onDateRangeChange({ from: undefined, to: undefined })}
+                                            >
+                                                Clear Filter
+                                            </Button>
+                                        </div>
+                                    )}
+                                </PopoverContent>
+                            </Popover>
+
                             <Button variant="ghost" size="sm" className="h-9 text-xs text-slate-500 hover:text-primary hover:bg-primary/5 rounded-xl">
                                 <Filter className="w-3.5 h-3.5 mr-2" /> Filters
                             </Button>

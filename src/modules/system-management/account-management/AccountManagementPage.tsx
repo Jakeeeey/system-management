@@ -20,6 +20,10 @@ export default function AccountManagementPage() {
     const { users, isLoading, executeAction, refresh } = useAccounts();
     const [searchQuery, setSearchQuery] = React.useState("");
     const [activeTab, setActiveTab] = React.useState("All Users");
+    const [dateRange, setDateRange] = React.useState<{ from: Date | undefined; to: Date | undefined }>({
+        from: undefined,
+        to: undefined
+    });
 
     // Modal states
     const [selectedUser, setSelectedUser] = React.useState<AccountUser | null>(null);
@@ -60,6 +64,26 @@ export default function AccountManagementPage() {
 
             if (!matchesSearch) return false;
 
+            // Date Range Filter
+            if (dateRange.from || dateRange.to) {
+                if (!user.dateOfHire) return false;
+                try {
+                    const hireDate = new Date(user.dateOfHire);
+                    const checkDate = new Date(hireDate.getFullYear(), hireDate.getMonth(), hireDate.getDate());
+
+                    if (dateRange.from) {
+                        const fromDate = new Date(dateRange.from.getFullYear(), dateRange.from.getMonth(), dateRange.from.getDate());
+                        if (checkDate < fromDate) return false;
+                    }
+                    if (dateRange.to) {
+                        const toDate = new Date(dateRange.to.getFullYear(), dateRange.to.getMonth(), dateRange.to.getDate());
+                        if (checkDate > toDate) return false;
+                    }
+                } catch {
+                    return false;
+                }
+            }
+
             if (activeTab === "All Users") return true;
             if (activeTab === "Active") return user.status === "ACTIVE";
             if (activeTab === "Blocked") return user.status === "BLOCKED";
@@ -67,7 +91,7 @@ export default function AccountManagementPage() {
 
             return true;
         });
-    }, [users, searchQuery, activeTab, isLocked]);
+    }, [users, searchQuery, activeTab, isLocked, dateRange]);
 
     const counts = React.useMemo(() => {
         let active = 0;
@@ -186,6 +210,8 @@ export default function AccountManagementPage() {
                 onSearchChange={setSearchQuery}
                 onAction={(action, user) => handleAction(action, user)}
                 counts={counts}
+                dateRange={dateRange}
+                onDateRangeChange={setDateRange}
             />
 
             {/* Modals */}
