@@ -28,7 +28,6 @@ import {
     Layers,
     ShieldCheck,
     ShieldOff,
-    MoreHorizontal,
 } from "lucide-react"
 import { ApprovalSetting } from "../types/approval-setting.types"
 import { cn } from "@/lib/utils"
