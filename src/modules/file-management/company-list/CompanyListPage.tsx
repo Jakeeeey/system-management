@@ -4,7 +4,7 @@ import * as React from "react";
 import { GlassCard } from "@/components/command-center/GlassCard";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Building, Plus, Search, Pencil, Trash2, Eye } from "lucide-react";
+import { Building, Plus, Search, Pencil, Trash2 } from "lucide-react";
 import { CompanyList } from "./types/company-list.types";
 import { CompanyListService } from "./services/company-list.service";
 import { CompanyListModal } from "./components/CompanyListModal";

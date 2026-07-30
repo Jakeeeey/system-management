@@ -15,6 +15,7 @@ export async function fetchCompanyTypes(): Promise<CompanyType[]> {
         const result = await response.json();
         const data = result.data || [];
         
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
         return data.map((item: any) => ({
             companyTypeId: item.company_type_id,
             companyTypeName: item.company_type_name,

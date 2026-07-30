@@ -15,6 +15,7 @@ export async function fetchCompanyList(): Promise<CompanyList[]> {
         const result = await response.json();
         const data = result.data || [];
         
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
         return data.map((item: any) => ({
             companyId: item.company_id,
             companyName: item.company_name,

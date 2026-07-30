@@ -18,6 +18,7 @@ export async function fetchSubscriptions(): Promise<SubscriptionLite[]> {
         const result = await response.json();
         const data = result.data || [];
         
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
         return data.map((item: any) => ({
             id: item.id,
             name: item.name
