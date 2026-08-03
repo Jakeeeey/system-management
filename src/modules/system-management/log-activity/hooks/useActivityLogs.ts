@@ -36,7 +36,7 @@ export const useActivityLogs = () => {
     const fetchDashboardData = useCallback(async () => {
         setIsLoading(true);
         try {
-            const res = await fetch("/api/activity-logs");
+            const res = await fetch("/api/sm/activity-logs");
             const data = await res.json();
 
             if (!res.ok || !data?.ok) {
