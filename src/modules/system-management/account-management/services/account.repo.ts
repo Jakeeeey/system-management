@@ -12,7 +12,7 @@ export class AccountRepo {
     static async getUsers(): Promise<AccountUser[]> {
         if (typeof window !== 'undefined') {
             try {
-                const response = await fetch('/api/account-management', {
+                const response = await fetch('/api/sm/account-management', {
                     cache: 'no-store'
                 });
                 if (!response.ok) throw new Error("Failed to fetch through proxy");
@@ -131,7 +131,7 @@ export class AccountRepo {
         if (typeof window !== 'undefined') {
 
             try {
-                const response = await fetch('/api/account-management', {
+                const response = await fetch('/api/sm/account-management', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({ action, ...payload })
