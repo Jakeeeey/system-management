@@ -66,7 +66,7 @@ function isProtectedPath(pathname: string, prefixes: string[]) {
 }
 
 
-export async function middleware(req: NextRequest) {
+export async function proxy(req: NextRequest) {
     if (process.env.NEXT_PUBLIC_AUTH_DISABLED === "true") {
         return NextResponse.next()
     }
@@ -92,7 +92,7 @@ export async function middleware(req: NextRequest) {
         pathname.startsWith("/api/auth/verify-otp") ||
         pathname.startsWith("/api/auth/resend-otp") ||
         pathname.startsWith("/api/auth/reset-password") ||
-        pathname.startsWith("/api/activity-logs") ||
+        pathname.startsWith("/api/sm/activity-logs") ||
         pathname.startsWith("/error/service-down") ||
         pathname.startsWith("/forgot-password") ||
         pathname.startsWith("/reset-password")
