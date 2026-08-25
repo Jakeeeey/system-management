@@ -16,8 +16,10 @@ export function TicketQueueBoard() {
     const [soundEnabled, setSoundEnabled] = useState(false);
     const audioCtxRef = useRef<AudioContext | null>(null);
 
-    const playNotificationSound = useCallback(() => {
+    const playNotificationSound = useCallback((priority: string = 'Normal') => {
         if (!soundEnabled) return;
+
+        const isHighPriority = priority.toLowerCase() === 'high' || priority.toLowerCase() === 'critical';
 
         try {
             if (!audioCtxRef.current) {
@@ -28,22 +30,67 @@ export function TicketQueueBoard() {
                 ctx.resume();
             }
 
-            const oscillator = ctx.createOscillator();
-            const gainNode = ctx.createGain();
+            if (isHighPriority) {
+                // Extremely attentive wailing siren for High/Critical tickets
+                const playSiren = (startTime: number) => {
+                    const osc = ctx.createOscillator();
+                    const gain = ctx.createGain();
+                    
+                    osc.type = 'sawtooth';
+                    
+                    // Wailing siren effect (sweeps up and down rapidly)
+                    for (let i = 0; i < 10; i++) {
+                        const time = startTime + (i * 0.3);
+                        osc.frequency.setValueAtTime(600, time);
+                        osc.frequency.linearRampToValueAtTime(1500, time + 0.15);
+                        osc.frequency.linearRampToValueAtTime(600, time + 0.3);
+                    }
+                    
+                    // Volume envelope
+                    gain.gain.setValueAtTime(0, startTime);
+                    gain.gain.linearRampToValueAtTime(0.3, startTime + 0.1);
+                    gain.gain.setValueAtTime(0.3, startTime + 2.9);
+                    gain.gain.linearRampToValueAtTime(0, startTime + 3.0);
+                    
+                    osc.connect(gain);
+                    gain.connect(ctx.destination);
+                    
+                    osc.start(startTime);
+                    osc.stop(startTime + 3.0);
+                };
 
-            oscillator.type = 'sine';
-            oscillator.frequency.setValueAtTime(880, ctx.currentTime); // A5 note
-            oscillator.frequency.exponentialRampToValueAtTime(440, ctx.currentTime + 0.5);
+                playSiren(ctx.currentTime);
+            } else {
+                // The previous alarm sequence is now used for Low/Medium tickets
+                const playBeep = (startTime: number) => {
+                    const osc = ctx.createOscillator();
+                    const gain = ctx.createGain();
+                    
+                    osc.type = 'square';
+                    // Alternating frequencies for an alarm-like effect
+                    osc.frequency.setValueAtTime(800, startTime);
+                    osc.frequency.setValueAtTime(1200, startTime + 0.2);
+                    osc.frequency.setValueAtTime(800, startTime + 0.4);
+                    osc.frequency.setValueAtTime(1200, startTime + 0.6);
+                    
+                    // Volume envelope
+                    gain.gain.setValueAtTime(0, startTime);
+                    gain.gain.linearRampToValueAtTime(0.2, startTime + 0.05);
+                    gain.gain.setValueAtTime(0.2, startTime + 0.75);
+                    gain.gain.linearRampToValueAtTime(0, startTime + 0.8);
+                    
+                    osc.connect(gain);
+                    gain.connect(ctx.destination);
+                    
+                    osc.start(startTime);
+                    osc.stop(startTime + 0.8);
+                };
 
-            gainNode.gain.setValueAtTime(0, ctx.currentTime);
-            gainNode.gain.linearRampToValueAtTime(0.5, ctx.currentTime + 0.05);
-            gainNode.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.5);
-
-            oscillator.connect(gainNode);
-            gainNode.connect(ctx.destination);
-
-            oscillator.start();
-            oscillator.stop(ctx.currentTime + 0.5);
+                // Play the alarm 3 times spanning over 3 seconds
+                playBeep(ctx.currentTime);
+                playBeep(ctx.currentTime + 1.0);
+                playBeep(ctx.currentTime + 2.0);
+            }
         } catch (e) {
             console.error("Audio playback failed", e);
         }
@@ -66,8 +113,11 @@ export function TicketQueueBoard() {
 
             // Find the highest ticket ID
             let maxId = 0;
+            let newTicketPriority = 'Normal';
             if (fetchedTickets.length > 0) {
-                maxId = Math.max(...fetchedTickets.map(t => Number(t.ticketId)));
+                const highestTicket = fetchedTickets.reduce((prev, current) => (Number(prev.ticketId) > Number(current.ticketId)) ? prev : current);
+                maxId = Number(highestTicket.ticketId);
+                newTicketPriority = highestTicket.priority;
             }
 
             setTickets(activeTickets);
@@ -76,7 +126,7 @@ export function TicketQueueBoard() {
                 setLastTicketId(maxId);
             } else {
                 if (maxId > lastTicketId) {
-                    playNotificationSound();
+                    playNotificationSound(newTicketPriority);
                     setLastTicketId(maxId);
                 }
             }
@@ -202,7 +252,7 @@ export function TicketQueueBoard() {
                                                 <div className="flex items-center justify-between mt-auto pt-4 border-t border-border/50">
                                                     <div className="flex items-center gap-2 text-muted-foreground font-medium">
                                                         <ClockIcon className="w-4 h-4" />
-                                                        {new Date(ticket.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                                                        {new Date(ticket.createdAt).toLocaleTimeString('en-US', { timeZone: 'Asia/Manila', hour: '2-digit', minute: '2-digit' })}
                                                     </div>
                                                     <div className="font-semibold px-3 py-1 bg-primary/10 text-primary uppercase text-sm">
                                                         {ticket.status}
