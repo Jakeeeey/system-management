@@ -21,6 +21,7 @@ export interface Ticket {
   createdAt: string;
   updatedAt: string;
   images: string[] | null;
+  followUpTimestamp: string | null;
   // Optional relations
   category?: TicketCategory;
 }

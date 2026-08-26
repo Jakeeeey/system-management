@@ -54,6 +54,7 @@ export async function fetchTickets(): Promise<Ticket[]> {
                 createdAt: item.created_at,
                 updatedAt: item.updated_at,
                 images: typeof item.images === 'string' ? JSON.parse(item.images) : item.images || [],
+                followUpTimestamp: item.follow_up_timestamp || null,
                 category: catObj
             };
         });
@@ -111,6 +112,7 @@ export async function fetchTicketById(id: number | string): Promise<Ticket | nul
             createdAt: item.created_at,
             updatedAt: item.updated_at,
             images: typeof item.images === 'string' ? JSON.parse(item.images) : item.images || [],
+            followUpTimestamp: item.follow_up_timestamp || null,
             category: catObj
         };
     } catch (error) {
@@ -290,6 +292,43 @@ export async function removeTicket(id: number): Promise<boolean> {
         return response.ok;
     } catch (error) {
         console.error("Failed to delete ticket:", error);
+        return false;
+    }
+}
+
+export async function triggerTicketFollowUp(id: number): Promise<boolean> {
+    try {
+        const timestamp = new Date().toISOString().slice(0, 19).replace('T', ' ');
+
+        const response = await fetch(`${DIRECTUS_URL}/items/ticket/${id}?access_token=${STATIC_TOKEN}`, {
+            method: 'PATCH',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                follow_up_timestamp: timestamp
+            })
+        });
+
+        if (response.ok) {
+            // Log the follow-up in the ticket's activity timeline
+            const activityRes = await fetch(`${DIRECTUS_URL}/items/ticket_activity?access_token=${STATIC_TOKEN}`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    ticket_id: id,
+                    activity_type: 'Follow-Up',
+                    note: 'A follow-up was requested for this ticket.',
+                    created_at: timestamp
+                })
+            });
+            if (!activityRes.ok) {
+                const errText = await activityRes.text();
+                console.error("Failed to insert into ticket_activity:", errText);
+            }
+        }
+
+        return response.ok;
+    } catch (error) {
+        console.error("Failed to trigger follow-up:", error);
         return false;
     }
 }

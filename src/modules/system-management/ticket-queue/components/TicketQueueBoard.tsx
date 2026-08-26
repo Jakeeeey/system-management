@@ -7,6 +7,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { ClockIcon, HashIcon, AlertCircleIcon, Volume2Icon, VolumeXIcon } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
 
 export function TicketQueueBoard() {
     const [tickets, setTickets] = useState<Ticket[]>([]);
@@ -14,6 +15,10 @@ export function TicketQueueBoard() {
     const [lastTicketId, setLastTicketId] = useState<number>(0);
     const [loading, setLoading] = useState(true);
     const [soundEnabled, setSoundEnabled] = useState(false);
+    const [followUpAlert, setFollowUpAlert] = useState<Ticket | null>(null);
+    
+    // Store the last known follow up timestamps for each ticket to detect changes
+    const knownFollowUpsRef = useRef<Record<number, string | null>>({});
     const audioCtxRef = useRef<AudioContext | null>(null);
 
     const playNotificationSound = useCallback((priority: string = 'Normal') => {
@@ -124,10 +129,45 @@ export function TicketQueueBoard() {
 
             if (isInitial) {
                 setLastTicketId(maxId);
+                
+                // Initialize known follow ups to avoid firing on first load
+                const initialMap: Record<number, string | null> = {};
+                for (const ticket of activeTickets) {
+                    initialMap[ticket.ticketId] = ticket.followUpTimestamp;
+                }
+                knownFollowUpsRef.current = initialMap;
             } else {
+                // Check for new tickets
                 if (maxId > lastTicketId) {
                     playNotificationSound(newTicketPriority);
                     setLastTicketId(maxId);
+                }
+
+                // Check for new follow-ups by comparing strings exactly
+                let newFollowUp: Ticket | null = null;
+                const newKnownMap = { ...knownFollowUpsRef.current };
+
+                for (const ticket of activeTickets) {
+                    const previousTimestamp = newKnownMap[ticket.ticketId];
+                    const currentTimestamp = ticket.followUpTimestamp;
+                    
+                    // If it has a timestamp, and it's DIFFERENT from what we knew before
+                    if (currentTimestamp && currentTimestamp !== previousTimestamp) {
+                        newFollowUp = ticket;
+                    }
+                    newKnownMap[ticket.ticketId] = currentTimestamp || null;
+                }
+                
+                knownFollowUpsRef.current = newKnownMap;
+
+                if (newFollowUp) {
+                    setFollowUpAlert(newFollowUp);
+                    playNotificationSound('Critical'); // Force siren sound
+                    
+                    // Auto-dismiss the dialog after 10 seconds
+                    setTimeout(() => {
+                        setFollowUpAlert(current => current?.ticketId === newFollowUp?.ticketId ? null : current);
+                    }, 10000);
                 }
             }
         } catch (error) {
@@ -267,6 +307,32 @@ export function TicketQueueBoard() {
                     ))}
                 </div>
             </main>
+
+            {/* Follow-up Alert Dialog */}
+            <Dialog open={!!followUpAlert} onOpenChange={(open) => !open && setFollowUpAlert(null)}>
+                <DialogContent className="rounded-none border-red-500 border-4 sm:max-w-lg bg-red-50 dark:bg-red-950 shadow-2xl">
+                    <DialogHeader>
+                        <DialogTitle className="text-red-700 dark:text-red-400 uppercase text-3xl font-black flex items-center gap-3">
+                            <AlertCircleIcon className="w-10 h-10 animate-pulse" />
+                            Follow-Up Requested!
+                        </DialogTitle>
+                        <DialogDescription className="text-red-800 dark:text-red-300 text-lg mt-4 font-medium text-left">
+                            A follow-up was just requested by a user for ticket <strong className="font-mono">{followUpAlert?.ticketNumber}</strong>.
+                            <br/><br/>
+                            <span className="text-2xl font-bold text-red-900 dark:text-red-200">{followUpAlert?.title}</span>
+                        </DialogDescription>
+                    </DialogHeader>
+                    <DialogFooter className="mt-6">
+                        <Button 
+                            variant="destructive" 
+                            className="rounded-none font-bold uppercase w-full text-lg h-12"
+                            onClick={() => setFollowUpAlert(null)}
+                        >
+                            Acknowledge
+                        </Button>
+                    </DialogFooter>
+                </DialogContent>
+            </Dialog>
         </div>
     );
 }

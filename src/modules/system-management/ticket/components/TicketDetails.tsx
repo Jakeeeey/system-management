@@ -6,8 +6,10 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/com
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { CalendarIcon, ClockIcon, UserIcon, HashIcon, TagIcon, PaperclipIcon } from "lucide-react";
-import { fetchTicketById, fetchTicketActivities } from "@/actions/ticket.action";
+import { CalendarIcon, ClockIcon, UserIcon, HashIcon, TagIcon, PaperclipIcon, BellRingIcon } from "lucide-react";
+import { fetchTicketById, fetchTicketActivities, triggerTicketFollowUp } from "@/actions/ticket.action";
+import { Button } from "@/components/ui/button";
+import { toast } from "sonner";
 import Image from "next/image";
 
 const DIRECTUS_URL = process.env.NEXT_PUBLIC_API_BASE_URL || "";
@@ -16,6 +18,7 @@ export function TicketDetails({ ticketId }: { ticketId: string }) {
     const [ticket, setTicket] = useState<Ticket | null>(null);
     const [activities, setActivities] = useState<TicketActivity[]>([]);
     const [loading, setLoading] = useState(true);
+    const [isFollowingUp, setIsFollowingUp] = useState(false);
 
     useEffect(() => {
         loadTicketData();
@@ -37,6 +40,24 @@ export function TicketDetails({ ticketId }: { ticketId: string }) {
             console.error("Error loading ticket details:", error);
         } finally {
             setLoading(false);
+        }
+    };
+
+    const handleFollowUp = async () => {
+        if (!ticket) return;
+        setIsFollowingUp(true);
+        try {
+            const success = await triggerTicketFollowUp(ticket.ticketId);
+            if (success) {
+                toast.success("Follow-up requested. The Queue dashboard has been alerted.");
+                loadTicketData(); // Reload to show the new activity in the timeline
+            } else {
+                toast.error("Failed to trigger follow-up.");
+            }
+        } catch (e) {
+            toast.error("An error occurred while following up.");
+        } finally {
+            setIsFollowingUp(false);
         }
     };
 
@@ -83,9 +104,23 @@ export function TicketDetails({ ticketId }: { ticketId: string }) {
                                 </CardDescription>
                             </div>
                             <div className="flex flex-col items-end gap-2">
-                                <Badge className={`font-semibold px-3 py-1 ${getStatusColor(ticket.status)}`} variant="outline">
-                                    {ticket.status}
-                                </Badge>
+                                <div className="flex items-center gap-2">
+                                    {ticket.status.toLowerCase() !== 'resolved' && ticket.status.toLowerCase() !== 'closed' && (
+                                        <Button 
+                                            size="sm" 
+                                            variant="outline" 
+                                            className="rounded-none bg-emerald-50 text-emerald-700 hover:bg-emerald-100 hover:text-emerald-800 border-emerald-200 transition-colors" 
+                                            onClick={handleFollowUp} 
+                                            disabled={isFollowingUp}
+                                        >
+                                            <BellRingIcon className="w-4 h-4 mr-2" />
+                                            {isFollowingUp ? "Sending..." : "Follow Up"}
+                                        </Button>
+                                    )}
+                                    <Badge className={`font-semibold px-3 py-1 ${getStatusColor(ticket.status)}`} variant="outline">
+                                        {ticket.status}
+                                    </Badge>
+                                </div>
                                 <Badge className={`font-medium ${getPriorityColor(ticket.priority)}`} variant="secondary">
                                     {ticket.priority} Priority
                                 </Badge>
