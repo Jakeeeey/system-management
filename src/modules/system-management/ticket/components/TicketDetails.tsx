@@ -8,6 +8,7 @@ import { Separator } from "@/components/ui/separator";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { CalendarIcon, ClockIcon, UserIcon, HashIcon, TagIcon, PaperclipIcon, BellRingIcon } from "lucide-react";
 import { fetchTicketById, fetchTicketActivities, triggerTicketFollowUp } from "@/actions/ticket.action";
+import { getFollowUpStatus } from "../utils/followUpHelper";
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
 import Image from "next/image";
@@ -111,10 +112,11 @@ export function TicketDetails({ ticketId }: { ticketId: string }) {
                                             variant="outline" 
                                             className="rounded-none bg-emerald-50 text-emerald-700 hover:bg-emerald-100 hover:text-emerald-800 border-emerald-200 transition-colors" 
                                             onClick={handleFollowUp} 
-                                            disabled={isFollowingUp}
+                                            disabled={isFollowingUp || !getFollowUpStatus(ticket).canFollowUp}
+                                            title={getFollowUpStatus(ticket).waitText}
                                         >
                                             <BellRingIcon className="w-4 h-4 mr-2" />
-                                            {isFollowingUp ? "Sending..." : "Follow Up"}
+                                            {isFollowingUp ? "Sending..." : (getFollowUpStatus(ticket).canFollowUp ? "Follow Up" : getFollowUpStatus(ticket).waitText)}
                                         </Button>
                                     )}
                                     <Badge className={`font-semibold px-3 py-1 ${getStatusColor(ticket.status)}`} variant="outline">

@@ -5,12 +5,15 @@ import { Ticket } from "../types/ticket.types";
 import { fetchTickets } from "@/actions/ticket.action";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Button } from "@/components/ui/button";
-import { PlusIcon, EyeIcon, TicketIcon } from "lucide-react";
+import { PlusIcon, EyeIcon, TicketIcon, BellRingIcon } from "lucide-react";
 import Link from "next/link";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Dialog, DialogContent, DialogTrigger, DialogTitle, DialogDescription as UIDialogDescription } from "@/components/ui/dialog";
 import { Badge } from "@/components/ui/badge";
 import { TicketForm } from "./TicketForm";
+import { getFollowUpStatus } from "../utils/followUpHelper";
+import { triggerTicketFollowUp } from "@/actions/ticket.action";
+import { toast } from "sonner";
 
 export function TicketList() {
     const [tickets, setTickets] = useState<Ticket[]>([]);
@@ -30,6 +33,20 @@ export function TicketList() {
             console.error("Error fetching tickets:", error);
         } finally {
             setLoading(false);
+        }
+    };
+
+    const handleFollowUp = async (ticket: Ticket) => {
+        try {
+            const success = await triggerTicketFollowUp(ticket.ticketId);
+            if (success) {
+                toast.success("Follow-up requested for ticket " + ticket.ticketNumber);
+                loadTickets();
+            } else {
+                toast.error("Failed to trigger follow-up.");
+            }
+        } catch (e) {
+            toast.error("An error occurred while following up.");
         }
     };
 
@@ -142,12 +159,27 @@ export function TicketList() {
                                                 </Badge>
                                             </TableCell>
                                             <TableCell className="text-right">
-                                                <Link href={`/system-management/ticket/${ticket.ticketId}`}>
-                                                    <Button variant="ghost" size="sm">
-                                                        <EyeIcon className="w-4 h-4 mr-2" />
-                                                        View
-                                                    </Button>
-                                                </Link>
+                                                <div className="flex justify-end gap-2">
+                                                    {ticket.status.toLowerCase() !== 'resolved' && ticket.status.toLowerCase() !== 'closed' && (
+                                                        <Button 
+                                                            variant="outline" 
+                                                            size="sm"
+                                                            className="text-emerald-700 hover:bg-emerald-50 border-emerald-200"
+                                                            disabled={!getFollowUpStatus(ticket).canFollowUp}
+                                                            onClick={() => handleFollowUp(ticket)}
+                                                            title={getFollowUpStatus(ticket).waitText}
+                                                        >
+                                                            <BellRingIcon className="w-4 h-4 mr-1" />
+                                                            {getFollowUpStatus(ticket).canFollowUp ? "Follow Up" : getFollowUpStatus(ticket).waitText}
+                                                        </Button>
+                                                    )}
+                                                    <Link href={`/system-management/ticket/${ticket.ticketId}`}>
+                                                        <Button variant="ghost" size="sm">
+                                                            <EyeIcon className="w-4 h-4 mr-2" />
+                                                            View
+                                                        </Button>
+                                                    </Link>
+                                                </div>
                                             </TableCell>
                                         </TableRow>
                                     ))
