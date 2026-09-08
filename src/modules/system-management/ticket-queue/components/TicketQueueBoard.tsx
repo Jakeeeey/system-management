@@ -1,7 +1,7 @@
 "use client"
 
 import React, { useEffect, useState, useRef, useCallback } from "react";
-import { fetchTickets, fetchTicketCategories } from "@/actions/ticket.action";
+import { fetchTickets, fetchTicketCategories } from "../../ticket/actions/ticket.action";
 import { Ticket, TicketCategory } from "../../ticket/types/ticket.types";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -28,7 +28,8 @@ export function TicketQueueBoard() {
 
         try {
             if (!audioCtxRef.current) {
-                audioCtxRef.current = new (window.AudioContext || (window as any).webkitAudioContext)();
+                const audioContextClass = window.AudioContext || (window as unknown as { webkitAudioContext: typeof AudioContext }).webkitAudioContext;
+                audioCtxRef.current = new audioContextClass();
             }
             const ctx = audioCtxRef.current;
             if (ctx.state === 'suspended') {
@@ -254,7 +255,7 @@ export function TicketQueueBoard() {
                 {!soundEnabled && (
                     <div className="mb-6 p-4 bg-amber-500/10 border border-amber-500/50 rounded-none flex items-center gap-4 text-amber-700 dark:text-amber-400">
                         <AlertCircleIcon className="w-6 h-6 shrink-0" />
-                        <p className="font-medium text-lg">Sound notifications are currently disabled. Click the "Sound OFF" button to enable audio alerts for new tickets.</p>
+                        <p className="font-medium text-lg">Sound notifications are currently disabled. Click the &quot;Sound OFF&quot; button to enable audio alerts for new tickets.</p>
                     </div>
                 )}
                 

@@ -1,17 +1,16 @@
 "use client"
 
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useState, useCallback } from "react";
 import { Ticket, TicketActivity } from "../types/ticket.types";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { CalendarIcon, ClockIcon, UserIcon, HashIcon, TagIcon, PaperclipIcon, BellRingIcon } from "lucide-react";
-import { fetchTicketById, fetchTicketActivities, triggerTicketFollowUp } from "@/actions/ticket.action";
+import { Avatar, AvatarFallback } from "@/components/ui/avatar";
+import { CalendarIcon, ClockIcon, HashIcon, TagIcon, PaperclipIcon, BellRingIcon } from "lucide-react";
+import { fetchTicketById, fetchTicketActivities, triggerTicketFollowUp } from "../actions/ticket.action";
 import { getFollowUpStatus } from "../utils/followUpHelper";
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
-import Image from "next/image";
 
 const DIRECTUS_URL = process.env.NEXT_PUBLIC_API_BASE_URL || "";
 
@@ -21,11 +20,7 @@ export function TicketDetails({ ticketId }: { ticketId: string }) {
     const [loading, setLoading] = useState(true);
     const [isFollowingUp, setIsFollowingUp] = useState(false);
 
-    useEffect(() => {
-        loadTicketData();
-    }, [ticketId]);
-
-    const loadTicketData = async () => {
+    const loadTicketData = useCallback(async () => {
         setLoading(true);
         try {
             // Fetch Ticket
@@ -42,7 +37,11 @@ export function TicketDetails({ ticketId }: { ticketId: string }) {
         } finally {
             setLoading(false);
         }
-    };
+    }, [ticketId]);
+
+    useEffect(() => {
+        loadTicketData();
+    }, [loadTicketData]);
 
     const handleFollowUp = async () => {
         if (!ticket) return;
@@ -55,7 +54,7 @@ export function TicketDetails({ ticketId }: { ticketId: string }) {
             } else {
                 toast.error("Failed to trigger follow-up.");
             }
-        } catch (e) {
+        } catch (_e) {
             toast.error("An error occurred while following up.");
         } finally {
             setIsFollowingUp(false);
@@ -144,6 +143,7 @@ export function TicketDetails({ ticketId }: { ticketId: string }) {
                                 <div className="grid grid-cols-2 sm:grid-cols-3 gap-4">
                                     {ticket.images.map((imageId) => (
                                         <div key={imageId} className="group relative aspect-square rounded-none overflow-hidden border shadow-sm transition-all hover:shadow-md hover:border-primary/50">
+                                            {/* eslint-disable-next-line @next/next/no-img-element */}
                                             <img
                                                 src={`${DIRECTUS_URL}/assets/${imageId}`}
                                                 alt="Ticket attachment"
@@ -176,7 +176,7 @@ export function TicketDetails({ ticketId }: { ticketId: string }) {
                             </div>
                         ) : (
                             <div className="space-y-6 relative before:absolute before:inset-0 before:ml-5 before:-translate-x-px md:before:mx-auto md:before:translate-x-0 before:h-full before:w-0.5 before:bg-gradient-to-b before:from-transparent before:via-muted-foreground/20 before:to-transparent">
-                                {activities.map((activity, i) => (
+                                {activities.map((activity) => (
                                     <div key={activity.activityId} className="relative flex items-center justify-between md:justify-normal md:odd:flex-row-reverse group is-active">
                                         <div className="flex items-center justify-center w-10 h-10 rounded-none border-4 border-background bg-muted text-muted-foreground shadow shrink-0 md:order-1 md:group-odd:-translate-x-1/2 md:group-even:translate-x-1/2 z-10">
                                             <div className="w-2 h-2 rounded-none bg-primary/60"></div>
@@ -194,7 +194,7 @@ export function TicketDetails({ ticketId }: { ticketId: string }) {
                                                 </div>
                                             )}
                                             {activity.note && (
-                                                <p className="text-sm bg-muted/40 p-2.5 rounded-none mt-3 italic text-foreground/80 border border-muted">"{activity.note}"</p>
+                                                <p className="text-sm bg-muted/40 p-2.5 rounded-none mt-3 italic text-foreground/80 border border-muted">&quot;{activity.note}&quot;</p>
                                             )}
                                         </div>
                                     </div>

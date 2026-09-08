@@ -1,6 +1,6 @@
 "use server"
 
-import { Ticket, TicketCategory, TicketActivity } from "../modules/system-management/ticket/types/ticket.types";
+import { Ticket, TicketCategory, TicketActivity } from "../types/ticket.types";
 
 const DIRECTUS_URL = process.env.NEXT_PUBLIC_API_BASE_URL || process.env.DIRECTUS_API_URL || "";
 const STATIC_TOKEN = process.env.DIRECTUS_STATIC_TOKEN || "";
@@ -58,7 +58,7 @@ export async function fetchTickets(): Promise<Ticket[]> {
                 category: catObj
             };
         });
-    } catch (error) {
+    } catch (_error) {
         console.warn("Failed to fetch tickets (transient connection issue). Retrying on next render.");
         return [];
     }
@@ -165,7 +165,7 @@ export async function fetchTicketCategories(): Promise<TicketCategory[]> {
             description: item.description,
             isActive: item.is_active,
         }));
-    } catch (error) {
+    } catch (_error) {
         console.warn("Failed to fetch ticket categories (transient connection issue). Retrying on next render.");
         return [];
     }

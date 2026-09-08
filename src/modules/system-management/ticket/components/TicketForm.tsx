@@ -11,7 +11,7 @@ import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { fetchTicketCategories, addTicket, uploadTicketImages } from "@/actions/ticket.action";
+import { fetchTicketCategories, addTicket, uploadTicketImages } from "../actions/ticket.action";
 import { TicketCategory } from "../types/ticket.types";
 import { AccountRepo } from "../../account-management/services/account.repo";
 import { AccountUser } from "../../account-management/types/account.types";

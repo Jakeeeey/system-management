@@ -2,7 +2,7 @@
 
 import React, { useEffect, useState } from "react";
 import { Ticket } from "../types/ticket.types";
-import { fetchTickets } from "@/actions/ticket.action";
+import { fetchTickets, triggerTicketFollowUp } from "../actions/ticket.action";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Button } from "@/components/ui/button";
 import { PlusIcon, EyeIcon, TicketIcon, BellRingIcon } from "lucide-react";
@@ -12,7 +12,6 @@ import { Dialog, DialogContent, DialogTrigger, DialogTitle, DialogDescription as
 import { Badge } from "@/components/ui/badge";
 import { TicketForm } from "./TicketForm";
 import { getFollowUpStatus } from "../utils/followUpHelper";
-import { triggerTicketFollowUp } from "@/actions/ticket.action";
 import { toast } from "sonner";
 
 export function TicketList() {
@@ -45,7 +44,7 @@ export function TicketList() {
             } else {
                 toast.error("Failed to trigger follow-up.");
             }
-        } catch (e) {
+        } catch (_e) {
             toast.error("An error occurred while following up.");
         }
     };
