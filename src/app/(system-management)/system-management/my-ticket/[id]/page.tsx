@@ -11,7 +11,8 @@ import { cookies } from "next/headers";
 
 const COOKIE_NAME = "vos_access_token";
 
-function decodeJwtPayload(token: string): Record<string, unknown> | null {
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+function decodeJwtPayload(token: string): Record<string, any> | null {
     try {
         const parts = token.split(".");
         if (parts.length < 2) return null;
@@ -38,14 +39,13 @@ function buildHeaderUserFromToken(token: string | null | undefined) {
     return { name, email: eStr || "", avatar: "" };
 }
 
-export default async function TicketDetailsPage({ params }: { params: Promise<{ id: string }> }) {
+export default async function MyTicketDetailsPage({ params }: { params: Promise<{ id: string }> }) {
     const { id } = await params;
     const cookieStore = await cookies();
     const token = cookieStore.get(COOKIE_NAME)?.value ?? null;
     const headerUser = buildHeaderUserFromToken(token);
     const payload = token ? decodeJwtPayload(token) : null;
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const currentUserId = payload ? Number((payload as any).id || (payload as any).user_id || (payload as any).sub) : undefined;
+    const currentUserId = payload ? Number(payload.id || payload.user_id || payload.sub) : undefined;
 
     return (
         <div className="flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden">
@@ -57,7 +57,7 @@ export default async function TicketDetailsPage({ params }: { params: Promise<{ 
                         <Breadcrumb>
                             <BreadcrumbList className="min-w-0 overflow-hidden">
                                 <BreadcrumbItem className="hidden md:block shrink-0">
-                                    <BreadcrumbLink href="/system-management/ticket">Support Tickets</BreadcrumbLink>
+                                    <BreadcrumbLink href="/system-management/my-ticket">My Tickets</BreadcrumbLink>
                                 </BreadcrumbItem>
                                 <BreadcrumbSeparator className="hidden md:block shrink-0" />
                                 <BreadcrumbItem className="min-w-0 overflow-hidden">
@@ -76,10 +76,10 @@ export default async function TicketDetailsPage({ params }: { params: Promise<{ 
 
             <main className="min-h-0 min-w-0 flex-1 overflow-y-auto overflow-x-hidden p-6 bg-muted/10">
                 <div className="mb-4">
-                    <Link href="/system-management/ticket">
+                    <Link href="/system-management/my-ticket">
                         <Button variant="ghost" size="sm">
                             <ArrowLeftIcon className="w-4 h-4 mr-2" />
-                            Back to Tickets
+                            Back to My Tickets
                         </Button>
                     </Link>
                 </div>

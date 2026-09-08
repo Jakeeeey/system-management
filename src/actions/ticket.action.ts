@@ -5,6 +5,17 @@ import { Ticket, TicketCategory, TicketActivity } from "../modules/system-manage
 const DIRECTUS_URL = process.env.NEXT_PUBLIC_API_BASE_URL || process.env.DIRECTUS_API_URL || "";
 const STATIC_TOKEN = process.env.DIRECTUS_STATIC_TOKEN || "";
 
+import { cookies } from "next/headers";
+
+function _getUserIdFromCookie(): number | null {
+    try {
+        // We need to use async cookies API in Next.js 15, but since this is a helper we'll await it inside the action
+        return null;
+    } catch {
+        return null;
+    }
+}
+
 export async function fetchTickets(): Promise<Ticket[]> {
     try {
         const [response, categories] = await Promise.all([
@@ -58,7 +69,7 @@ export async function fetchTickets(): Promise<Ticket[]> {
                 category: catObj
             };
         });
-    } catch (error) {
+    } catch (_error) {
         console.warn("Failed to fetch tickets (transient connection issue). Retrying on next render.");
         return [];
     }
@@ -165,7 +176,7 @@ export async function fetchTicketCategories(): Promise<TicketCategory[]> {
             description: item.description,
             isActive: item.is_active,
         }));
-    } catch (error) {
+    } catch (_error) {
         console.warn("Failed to fetch ticket categories (transient connection issue). Retrying on next render.");
         return [];
     }
@@ -284,6 +295,78 @@ export async function editTicket(id: number, data: Partial<Ticket>): Promise<boo
     }
 }
 
+export async function updateTicketWithActivity(
+    id: number, 
+    data: { status?: string; assignedTo?: number | null; note?: string },
+    oldStatus: string
+): Promise<boolean> {
+    try {
+        const timestamp = new Date().toISOString().slice(0, 19).replace('T', ' ');
+
+        // 1. Update ticket fields
+        const updatePayload: Record<string, unknown> = {
+            updated_at: timestamp
+        };
+        if (data.status) updatePayload.status = data.status;
+        if (data.assignedTo !== undefined) updatePayload.assigned_to = data.assignedTo;
+
+        const response = await fetch(`${DIRECTUS_URL}/items/ticket/${id}?access_token=${STATIC_TOKEN}`, {
+            method: 'PATCH',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(updatePayload)
+        });
+
+        if (!response.ok) {
+            console.error("Failed to patch ticket:", await response.text());
+            return false;
+        }
+
+        let currentUserId: number | null = null;
+        try {
+            const cookieStore = await cookies();
+            const token = cookieStore.get("vos_access_token")?.value;
+            if (token) {
+                const parts = token.split(".");
+                if (parts.length >= 2) {
+                    const b64 = parts[1].replace(/-/g, "+").replace(/_/g, "/");
+                    const padded = b64 + "=".repeat((4 - (b64.length % 4)) % 4);
+                    const json = Buffer.from(padded, "base64").toString("utf8");
+                    const payload = JSON.parse(json);
+                    currentUserId = Number(payload.id || payload.user_id || payload.sub) || null;
+                }
+            }
+        } catch (e) {
+            console.warn("Could not extract user_id from cookie:", e);
+        }
+
+        // 2. Log activity
+        const activityPayload = {
+            ticket_id: id,
+            user_id: currentUserId || 24, // Fallback to 24 if we can't determine it
+            activity_type: 'Ticket Update',
+            old_status: oldStatus,
+            new_status: data.status || oldStatus,
+            note: data.note || null,
+            created_at: timestamp
+        };
+
+        const activityRes = await fetch(`${DIRECTUS_URL}/items/ticket_activity?access_token=${STATIC_TOKEN}`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(activityPayload)
+        });
+
+        if (!activityRes.ok) {
+            console.error("Failed to log activity:", await activityRes.text());
+        }
+
+        return true;
+    } catch (error) {
+        console.error("Failed to update ticket and activity:", error);
+        return false;
+    }
+}
+
 export async function removeTicket(id: number): Promise<boolean> {
     try {
         const response = await fetch(`${DIRECTUS_URL}/items/ticket/${id}?access_token=${STATIC_TOKEN}`, {
@@ -309,12 +392,29 @@ export async function triggerTicketFollowUp(id: number): Promise<boolean> {
         });
 
         if (response.ok) {
+            let currentUserId: number | null = null;
+            try {
+                const cookieStore = await cookies();
+                const token = cookieStore.get("vos_access_token")?.value;
+                if (token) {
+                    const parts = token.split(".");
+                    if (parts.length >= 2) {
+                        const b64 = parts[1].replace(/-/g, "+").replace(/_/g, "/");
+                        const padded = b64 + "=".repeat((4 - (b64.length % 4)) % 4);
+                        const json = Buffer.from(padded, "base64").toString("utf8");
+                        const payload = JSON.parse(json);
+                        currentUserId = Number(payload.id || payload.user_id || payload.sub) || null;
+                    }
+                }
+            } catch (_e) { }
+
             // Log the follow-up in the ticket's activity timeline
             const activityRes = await fetch(`${DIRECTUS_URL}/items/ticket_activity?access_token=${STATIC_TOKEN}`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
                     ticket_id: id,
+                    user_id: currentUserId || 24,
                     activity_type: 'Follow-Up',
                     note: 'A follow-up was requested for this ticket.',
                     created_at: timestamp

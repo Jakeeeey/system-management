@@ -2,6 +2,7 @@ import * as React from "react";
 
 import { AppSidebar } from "@/app/(system-management)/system-management/_components/app-sidebar";
 import { SidebarInset, SidebarProvider } from "@/components/ui/sidebar";
+import { NotificationProvider } from "@/components/shared/NotificationProvider";
 
 export default function DashboardLayout({
                                             children,
@@ -10,6 +11,7 @@ export default function DashboardLayout({
 }) {
     return (
         <SidebarProvider>
+            <NotificationProvider />
             <AppSidebar />
 
             {/* ✅ RIGHT column should be part of the body (NOT floating/inset card) */}
