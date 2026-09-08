@@ -43,9 +43,6 @@ export default async function TicketDetailsPage({ params }: { params: Promise<{ 
     const cookieStore = await cookies();
     const token = cookieStore.get(COOKIE_NAME)?.value ?? null;
     const headerUser = buildHeaderUserFromToken(token);
-    const payload = token ? decodeJwtPayload(token) : null;
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const currentUserId = payload ? Number((payload as any).id || (payload as any).user_id || (payload as any).sub) : undefined;
 
     return (
         <div className="flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden">
@@ -83,7 +80,7 @@ export default async function TicketDetailsPage({ params }: { params: Promise<{ 
                         </Button>
                     </Link>
                 </div>
-                <TicketDetails ticketId={id} currentUserId={currentUserId} />
+                <TicketDetails ticketId={id} />
             </main>
         </div>
     );

@@ -1,6 +1,6 @@
 "use client"
 
-import React, { useEffect, useState, useCallback } from "react";
+import React, { useEffect, useState } from "react";
 import { Ticket } from "../types/ticket.types";
 import { fetchTickets } from "@/actions/ticket.action";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
@@ -15,30 +15,26 @@ import { getFollowUpStatus } from "../utils/followUpHelper";
 import { triggerTicketFollowUp } from "@/actions/ticket.action";
 import { toast } from "sonner";
 
-export function TicketList({ filterByUserId, viewPathPrefix = "/system-management/ticket" }: { filterByUserId?: number, viewPathPrefix?: string }) {
+export function TicketList() {
     const [tickets, setTickets] = useState<Ticket[]>([]);
     const [loading, setLoading] = useState(true);
     const [isCreateOpen, setIsCreateOpen] = useState(false);
 
-    const loadTickets = useCallback(async () => {
+    useEffect(() => {
+        loadTickets();
+    }, []);
+
+    const loadTickets = async () => {
         setLoading(true);
         try {
             const data = await fetchTickets();
-            if (filterByUserId !== undefined) {
-                setTickets(data.filter(t => Number(t.assignedTo) === filterByUserId));
-            } else {
-                setTickets(data);
-            }
+            setTickets(data);
         } catch (error) {
             console.error("Error fetching tickets:", error);
         } finally {
             setLoading(false);
         }
-    }, [filterByUserId]);
-
-    useEffect(() => {
-        loadTickets();
-    }, [loadTickets]);
+    };
 
     const handleFollowUp = async (ticket: Ticket) => {
         try {
@@ -49,7 +45,7 @@ export function TicketList({ filterByUserId, viewPathPrefix = "/system-managemen
             } else {
                 toast.error("Failed to trigger follow-up.");
             }
-        } catch (_e) {
+        } catch (e) {
             toast.error("An error occurred while following up.");
         }
     };
@@ -177,7 +173,7 @@ export function TicketList({ filterByUserId, viewPathPrefix = "/system-managemen
                                                             {getFollowUpStatus(ticket).canFollowUp ? "Follow Up" : getFollowUpStatus(ticket).waitText}
                                                         </Button>
                                                     )}
-                                                    <Link href={`${viewPathPrefix}/${ticket.ticketId}`}>
+                                                    <Link href={`/system-management/ticket/${ticket.ticketId}`}>
                                                         <Button variant="ghost" size="sm">
                                                             <EyeIcon className="w-4 h-4 mr-2" />
                                                             View

@@ -1,31 +1,31 @@
 "use client"
 
-import React, { useEffect, useState, useCallback } from "react";
+import React, { useEffect, useState } from "react";
 import { Ticket, TicketActivity } from "../types/ticket.types";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
-import { Avatar, AvatarFallback } from "@/components/ui/avatar";
-import { CalendarIcon, ClockIcon, HashIcon, TagIcon, PaperclipIcon, BellRingIcon } from "lucide-react";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { CalendarIcon, ClockIcon, UserIcon, HashIcon, TagIcon, PaperclipIcon, BellRingIcon } from "lucide-react";
 import { fetchTicketById, fetchTicketActivities, triggerTicketFollowUp } from "@/actions/ticket.action";
 import { getFollowUpStatus } from "../utils/followUpHelper";
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
-import { EditIcon, CheckCircleIcon } from "lucide-react";
-import { UpdateTicketModal } from "./UpdateTicketModal";
-import { updateTicketWithActivity } from "@/actions/ticket.action";
+import Image from "next/image";
 
 const DIRECTUS_URL = process.env.NEXT_PUBLIC_API_BASE_URL || "";
 
-export function TicketDetails({ ticketId, currentUserId }: { ticketId: string; currentUserId?: number }) {
+export function TicketDetails({ ticketId }: { ticketId: string }) {
     const [ticket, setTicket] = useState<Ticket | null>(null);
     const [activities, setActivities] = useState<TicketActivity[]>([]);
     const [loading, setLoading] = useState(true);
     const [isFollowingUp, setIsFollowingUp] = useState(false);
-    const [isUpdateModalOpen, setIsUpdateModalOpen] = useState(false);
-    const [isApprovingClosure, setIsApprovingClosure] = useState(false);
 
-    const loadTicketData = useCallback(async () => {
+    useEffect(() => {
+        loadTicketData();
+    }, [ticketId]);
+
+    const loadTicketData = async () => {
         setLoading(true);
         try {
             // Fetch Ticket
@@ -37,16 +37,12 @@ export function TicketDetails({ ticketId, currentUserId }: { ticketId: string; c
             // Fetch Activities
             const fetchedActivities = await fetchTicketActivities(ticketId);
             setActivities(fetchedActivities);
-        } catch (_error) {
-            toast.error("Failed to load ticket details.");
+        } catch (error) {
+            console.error("Error loading ticket details:", error);
         } finally {
             setLoading(false);
         }
-    }, [ticketId]);
-
-    useEffect(() => {
-        loadTicketData();
-    }, [loadTicketData]);
+    };
 
     const handleFollowUp = async () => {
         if (!ticket) return;
@@ -59,32 +55,10 @@ export function TicketDetails({ ticketId, currentUserId }: { ticketId: string; c
             } else {
                 toast.error("Failed to trigger follow-up.");
             }
-        } catch (_e) {
+        } catch (e) {
             toast.error("An error occurred while following up.");
         } finally {
             setIsFollowingUp(false);
-        }
-    };
-
-    const handleApproveClosure = async () => {
-        if (!ticket) return;
-        setIsApprovingClosure(true);
-        try {
-            const success = await updateTicketWithActivity(
-                ticket.ticketId,
-                { status: "Closed", note: "Closure approved by user." },
-                ticket.status
-            );
-            if (success) {
-                toast.success("Ticket closure approved!");
-                loadTicketData();
-            } else {
-                toast.error("Failed to approve closure.");
-            }
-        } catch (_e) {
-            toast.error("An error occurred during approval.");
-        } finally {
-            setIsApprovingClosure(false);
         }
     };
 
@@ -96,7 +70,6 @@ export function TicketDetails({ ticketId, currentUserId }: { ticketId: string; c
             case 'open': return 'bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-300 border-blue-200';
             case 'in progress': return 'bg-amber-100 text-amber-800 dark:bg-amber-900/30 dark:text-amber-300 border-amber-200';
             case 'resolved': return 'bg-emerald-100 text-emerald-800 dark:bg-emerald-900/30 dark:text-emerald-300 border-emerald-200';
-            case 'pending close': return 'bg-purple-100 text-purple-800 dark:bg-purple-900/30 dark:text-purple-300 border-purple-200';
             case 'closed': return 'bg-slate-100 text-slate-800 dark:bg-slate-800 dark:text-slate-300 border-slate-200';
             default: return 'bg-gray-100 text-gray-800';
         }
@@ -132,32 +105,8 @@ export function TicketDetails({ ticketId, currentUserId }: { ticketId: string; c
                                 </CardDescription>
                             </div>
                             <div className="flex flex-col items-end gap-2">
-                                <div className="flex flex-wrap items-center justify-end gap-2">
-                                    {ticket.status.toLowerCase() === 'pending close' && (!ticket.assignedTo || ticket.assignedTo === currentUserId) && (
-                                        <Button
-                                            size="sm"
-                                            className="rounded-none bg-purple-600 hover:bg-purple-700 text-white"
-                                            onClick={handleApproveClosure}
-                                            disabled={isApprovingClosure}
-                                        >
-                                            <CheckCircleIcon className="w-4 h-4 mr-2" />
-                                            {isApprovingClosure ? "Approving..." : "Approve Closure"}
-                                        </Button>
-                                    )}
-
-                                    {ticket.status.toLowerCase() !== 'closed' && (!ticket.assignedTo || ticket.assignedTo === currentUserId) && (
-                                        <Button
-                                            size="sm"
-                                            variant="outline"
-                                            className="rounded-none border-border"
-                                            onClick={() => setIsUpdateModalOpen(true)}
-                                        >
-                                            <EditIcon className="w-4 h-4 mr-2" />
-                                            Update Ticket
-                                        </Button>
-                                    )}
-
-                                    {ticket.status.toLowerCase() !== 'resolved' && ticket.status.toLowerCase() !== 'closed' && ticket.status.toLowerCase() !== 'pending close' && (!ticket.assignedTo || ticket.assignedTo === currentUserId) && (
+                                <div className="flex items-center gap-2">
+                                    {ticket.status.toLowerCase() !== 'resolved' && ticket.status.toLowerCase() !== 'closed' && (
                                         <Button 
                                             size="sm" 
                                             variant="outline" 
@@ -195,7 +144,6 @@ export function TicketDetails({ ticketId, currentUserId }: { ticketId: string; c
                                 <div className="grid grid-cols-2 sm:grid-cols-3 gap-4">
                                     {ticket.images.map((imageId) => (
                                         <div key={imageId} className="group relative aspect-square rounded-none overflow-hidden border shadow-sm transition-all hover:shadow-md hover:border-primary/50">
-                                            {/* eslint-disable-next-line @next/next/no-img-element */}
                                             <img
                                                 src={`${DIRECTUS_URL}/assets/${imageId}`}
                                                 alt="Ticket attachment"
@@ -228,7 +176,7 @@ export function TicketDetails({ ticketId, currentUserId }: { ticketId: string; c
                             </div>
                         ) : (
                             <div className="space-y-6 relative before:absolute before:inset-0 before:ml-5 before:-translate-x-px md:before:mx-auto md:before:translate-x-0 before:h-full before:w-0.5 before:bg-gradient-to-b before:from-transparent before:via-muted-foreground/20 before:to-transparent">
-                                {activities.map((activity) => (
+                                {activities.map((activity, i) => (
                                     <div key={activity.activityId} className="relative flex items-center justify-between md:justify-normal md:odd:flex-row-reverse group is-active">
                                         <div className="flex items-center justify-center w-10 h-10 rounded-none border-4 border-background bg-muted text-muted-foreground shadow shrink-0 md:order-1 md:group-odd:-translate-x-1/2 md:group-even:translate-x-1/2 z-10">
                                             <div className="w-2 h-2 rounded-none bg-primary/60"></div>
@@ -246,7 +194,7 @@ export function TicketDetails({ ticketId, currentUserId }: { ticketId: string; c
                                                 </div>
                                             )}
                                             {activity.note && (
-                                                <p className="text-sm bg-muted/40 p-2.5 rounded-none mt-3 italic text-foreground/80 border border-muted">&ldquo;{activity.note}&rdquo;</p>
+                                                <p className="text-sm bg-muted/40 p-2.5 rounded-none mt-3 italic text-foreground/80 border border-muted">"{activity.note}"</p>
                                             )}
                                         </div>
                                     </div>
@@ -306,13 +254,6 @@ export function TicketDetails({ ticketId, currentUserId }: { ticketId: string; c
                     </CardContent>
                 </Card>
             </div>
-            
-            <UpdateTicketModal 
-                ticket={ticket} 
-                isOpen={isUpdateModalOpen} 
-                onClose={() => setIsUpdateModalOpen(false)} 
-                onSuccess={loadTicketData} 
-            />
         </div>
     );
 }
