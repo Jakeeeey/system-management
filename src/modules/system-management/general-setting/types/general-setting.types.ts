@@ -107,6 +107,18 @@ export const KNOWN_SETTINGS: Record<string, KnownSettingMeta> = {
         defaultValue: "1",
         icon: "ShieldAlert",
     },
+    payroll_industry: {
+        title: "Payroll Industry Sector",
+        description: "Defines the operating sector for payroll computation rules, statutory tax tables, and compliance governance (e.g. Government or Private).",
+        category: "payroll_governance",
+        inputType: "select",
+        defaultValue: "Government",
+        icon: "Landmark",
+        options: [
+            { label: "Government", value: "Government" },
+            { label: "Private", value: "Private" },
+        ],
+    },
 };
 
 export const DEFAULT_KEY_SETTINGS = [
@@ -117,4 +129,5 @@ export const DEFAULT_KEY_SETTINGS = [
     { setting_key: "division_name", setting_value: "Division" },
     { setting_key: "payroll_employee_management_read_only", setting_value: "1" },
     { setting_key: "payroll_department_management_read_only", setting_value: "1" },
+    { setting_key: "payroll_industry", setting_value: "Government" },
 ];

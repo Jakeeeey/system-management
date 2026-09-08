@@ -33,6 +33,7 @@ import {
     Sparkles,
     Cpu,
     FileCode2,
+    Landmark,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
@@ -120,9 +121,10 @@ export function GeneralSettingCards({
     const faceAttendance = settingMap.get("face_attendance");
     const rfidTagging = settingMap.get("rfid_asset_tagging");
 
-    // Payroll Read-Only Items
+    // Payroll Governance Items
     const payrollEmpReadOnly = settingMap.get("payroll_employee_management_read_only");
     const payrollDeptReadOnly = settingMap.get("payroll_department_management_read_only");
+    const payrollIndustry = settingMap.get("payroll_industry");
 
     // Other/custom settings
     const standardKeys = new Set([
@@ -133,6 +135,7 @@ export function GeneralSettingCards({
         "rfid_asset_tagging",
         "payroll_employee_management_read_only",
         "payroll_department_management_read_only",
+        "payroll_industry",
     ]);
     const otherSettings = settings.filter((s) => !standardKeys.has(s.settingKey));
 
@@ -352,7 +355,64 @@ export function GeneralSettingCards({
                     </div>
                 </div>
 
-                <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                    {/* Payroll Industry Sector */}
+                    <GlassCard accent="rose" className="p-6">
+                        <div className="flex flex-col h-full justify-between gap-5">
+                            <div className="space-y-3">
+                                <div className="flex items-start justify-between">
+                                    <div className="flex items-center gap-3">
+                                        <div className="p-3 rounded-2xl bg-rose-500/10 text-rose-500 dark:text-rose-400">
+                                            <Landmark className="w-6 h-6" />
+                                        </div>
+                                        <div>
+                                            <h4 className="text-base font-bold text-slate-900 dark:text-white">
+                                                Payroll Industry Sector
+                                            </h4>
+                                            <code className="text-[11px] font-mono text-rose-600 dark:text-rose-400">
+                                                payroll_industry
+                                            </code>
+                                        </div>
+                                    </div>
+                                    <Badge variant="outline" className="text-[10px] font-bold uppercase tracking-wider bg-rose-500/10 text-rose-600 dark:text-rose-400 border-rose-500/20">
+                                        Sector
+                                    </Badge>
+                                </div>
+                                <p className="text-xs text-slate-500 dark:text-slate-400 leading-relaxed">
+                                    Defines operating sector governance for statutory contributions, tax tables, and compliance rules.
+                                </p>
+                            </div>
+
+                            <div className="space-y-2">
+                                <label className="text-xs font-bold uppercase tracking-wider text-slate-600 dark:text-slate-300">
+                                    Selected Industry Sector
+                                </label>
+                                <Select
+                                    value={payrollIndustry?.settingValue || "Government"}
+                                    onValueChange={(newVal) => {
+                                        if (payrollIndustry) {
+                                            onUpdate({ id: payrollIndustry.id, settingKey: "payroll_industry" }, newVal);
+                                        } else {
+                                            onUpdate({ settingKey: "payroll_industry" }, newVal);
+                                        }
+                                    }}
+                                >
+                                    <SelectTrigger className="h-11 rounded-xl bg-white dark:bg-slate-800/80 border-slate-200/70 dark:border-white/10 text-xs font-semibold">
+                                        <SelectValue placeholder="Select Industry" />
+                                    </SelectTrigger>
+                                    <SelectContent className="rounded-xl border-slate-200 dark:border-white/10">
+                                        <SelectItem value="Government" className="text-xs">
+                                            Government
+                                        </SelectItem>
+                                        <SelectItem value="Private" className="text-xs">
+                                            Private
+                                        </SelectItem>
+                                    </SelectContent>
+                                </Select>
+                            </div>
+                        </div>
+                    </GlassCard>
+
                     {/* Payroll Employee Read-Only */}
                     <GovernanceToggleCard
                         title="Payroll Employee Management Read-Only"
