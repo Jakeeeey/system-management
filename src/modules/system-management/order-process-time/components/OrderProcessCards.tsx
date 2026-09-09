@@ -102,9 +102,14 @@ export function OrderProcessCards({
                                 </div>
 
                                 <Button
+                                    type="button"
                                     size="icon"
                                     variant="ghost"
-                                    onClick={() => onOpenEditModal(stage)}
+                                    onClick={(e) => {
+                                        e.preventDefault();
+                                        e.stopPropagation();
+                                        onOpenEditModal(stage);
+                                    }}
                                     className="h-8 w-8 rounded-xl hover:bg-slate-100 dark:hover:bg-white/10 shrink-0"
                                     title="Edit Stage Details"
                                 >
@@ -134,14 +139,17 @@ export function OrderProcessCards({
                                 <div className="flex items-center justify-between gap-2 pt-1 border-t border-slate-200/40 dark:border-white/5">
                                     <div className="flex items-center gap-1">
                                         <Button
+                                            type="button"
                                             size="sm"
                                             variant="outline"
-                                            onClick={() =>
+                                            onClick={(e) => {
+                                                e.preventDefault();
+                                                e.stopPropagation();
                                                 onUpdateMinutes(
                                                     stage.id,
                                                     Math.max(5, stage.targetMinutes - 15)
-                                                )
-                                            }
+                                                );
+                                            }}
                                             disabled={stage.targetMinutes <= 5}
                                             className="h-7 w-7 p-0 rounded-lg text-xs"
                                             title="Minus 15 minutes"
@@ -149,11 +157,14 @@ export function OrderProcessCards({
                                             <Minus className="w-3 h-3" />
                                         </Button>
                                         <Button
+                                            type="button"
                                             size="sm"
                                             variant="outline"
-                                            onClick={() =>
-                                                onUpdateMinutes(stage.id, stage.targetMinutes + 15)
-                                            }
+                                            onClick={(e) => {
+                                                e.preventDefault();
+                                                e.stopPropagation();
+                                                onUpdateMinutes(stage.id, stage.targetMinutes + 15);
+                                            }}
                                             className="h-7 w-7 p-0 rounded-lg text-xs"
                                             title="Add 15 minutes"
                                         >

@@ -1,7 +1,7 @@
 "use client";
 
 import * as React from "react";
-import { OrderProcessTime } from "../types/order-process-time.types";
+import { OrderProcessTime, formatMinutesToHuman } from "../types/order-process-time.types";
 import { OrderProcessTimeRepo } from "../services/order-process-time.repo";
 import { AccountRepo } from "../../account-management/services/account.repo";
 import { AccountUser } from "../../account-management/types/account.types";
@@ -14,16 +14,16 @@ export function useOrderProcessTime() {
     const [isUsersLoading, setIsUsersLoading] = React.useState(true);
     const [isSaving, setIsSaving] = React.useState(false);
 
-    const loadData = React.useCallback(async () => {
-        setIsLoading(true);
+    const loadData = React.useCallback(async (silent = false) => {
+        if (!silent) setIsLoading(true);
         try {
             const data = await OrderProcessTimeRepo.getAll();
             setProcessTimes(data);
         } catch (error) {
             console.error("[useOrderProcessTime] Fetch error:", error);
-            toast.error("Failed to load order process times");
+            if (!silent) toast.error("Failed to load order process times");
         } finally {
-            setIsLoading(false);
+            if (!silent) setIsLoading(false);
         }
     }, []);
 
@@ -58,7 +58,7 @@ export function useOrderProcessTime() {
                     ? {
                           ...item,
                           targetMinutes: minutes,
-                          formattedTime: `${minutes}m`,
+                          formattedTime: formatMinutesToHuman(minutes),
                       }
                     : item
             )
@@ -68,17 +68,17 @@ export function useOrderProcessTime() {
             const success = await OrderProcessTimeRepo.update(id, { targetMinutes: minutes });
             if (success) {
                 toast.success("Target processing time updated");
-                await loadData();
+                await loadData(true);
                 return true;
             } else {
                 toast.error("Failed to update target time");
-                await loadData();
+                await loadData(true);
                 return false;
             }
         } catch (error) {
             console.error("[useOrderProcessTime] Update minutes error:", error);
             toast.error("An error occurred while updating target time");
-            await loadData();
+            await loadData(true);
             return false;
         } finally {
             setIsSaving(false);
@@ -110,17 +110,17 @@ export function useOrderProcessTime() {
                         ? `Assigned ${selectedUser?.fullName || "person"} as accountable`
                         : "Accountable person unassigned"
                 );
-                await loadData();
+                await loadData(true);
                 return true;
             } else {
                 toast.error("Failed to update accountable personnel");
-                await loadData();
+                await loadData(true);
                 return false;
             }
         } catch (error) {
             console.error("[useOrderProcessTime] Assign user error:", error);
             toast.error("An error occurred while assigning personnel");
-            await loadData();
+            await loadData(true);
             return false;
         } finally {
             setIsSaving(false);
@@ -141,7 +141,7 @@ export function useOrderProcessTime() {
             const success = await OrderProcessTimeRepo.update(id, payload);
             if (success) {
                 toast.success("Order process stage updated successfully");
-                await loadData();
+                await loadData(true);
                 return true;
             } else {
                 toast.error("Failed to save changes");
